@@ -1,0 +1,7 @@
+{
+  "name": "shithead-app",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}

@@ -1,8 +1,11 @@
 <template>
   <ion-page>
     <ion-header>
-      <ion-toolbar>
-        <ion-title>Shithead</ion-title>
+      <ion-toolbar class="game-toolbar">
+        <ion-title>
+          <span class="header-logo">💩</span>
+          Shithead
+        </ion-title>
         <ion-buttons slot="end">
           <ion-button @click="confirmQuit">
             <ion-icon :icon="closeOutline"></ion-icon>
@@ -289,6 +292,7 @@ import {
   getNextPlayerIndex
 } from '@/services/gameEngine';
 import { calculateMove, getAIThinkingDelay } from '@/services/aiPlayer';
+import { soundService } from '@/services/soundService';
 
 const router = useRouter();
 const gameStore = useGameStore();
@@ -438,6 +442,7 @@ function startGame() {
 }
 
 async function triggerBurnAnimation() {
+  soundService.play('special-burn');
   showBurnAnimation.value = true;
   await new Promise(resolve => setTimeout(resolve, 2000));
   showBurnAnimation.value = false;
@@ -463,6 +468,10 @@ async function playSelectedCards() {
     return;
   }
 
+  // Play sound for the card(s) played
+  const cardRank = cards[0].rank;
+  soundService.playSpecialCard(cardRank);
+
   if (result.burned) {
     await triggerBurnAnimation();
     gameStore.clearDiscard();
@@ -471,6 +480,7 @@ async function playSelectedCards() {
   }
 
   if (result.playerOut) {
+    soundService.play('player-out');
     showMessage(`${player.name} is klaar!`, 'success', '🎉');
     gameStore.setPlayerOut(player.id);
 
@@ -486,6 +496,7 @@ async function playSelectedCards() {
 async function pickupPile() {
   if (!canPickup.value || !bottomPlayer.value) return;
 
+  soundService.play('pile-pickup');
   const pickedUp = executePickup(bottomPlayer.value, gameStore.discardPile);
   gameStore.discardPile = [];
 
@@ -508,9 +519,11 @@ async function playFaceDown(index: number) {
     return;
   }
 
+  soundService.playSpecialCard(result.card.rank);
   showMessage(`Gespeeld: ${result.card.rank}`, 'info', '🎴');
 
   if (result.mustPickup) {
+    soundService.play('pile-pickup');
     const allCards = [...gameStore.discardPile, result.card];
     player.hand.push(...allCards);
     gameStore.discardPile = [];
@@ -527,6 +540,7 @@ async function playFaceDown(index: number) {
   }
 
   if (result.playerOut) {
+    soundService.play('player-out');
     showMessage(`${player.name} is klaar!`, 'success', '🎉');
     gameStore.setPlayerOut(player.id);
 
@@ -542,6 +556,7 @@ async function playFaceDown(index: number) {
 function checkPlayerStatus(player: Player) {
   if (player.hand.length === 0 && player.faceUp.length === 0 && player.faceDown.length === 0) {
     gameStore.setPlayerOut(player.id);
+    soundService.play('player-out');
     showMessage(`${player.name} is klaar!`, 'success', '🎉');
 
     if (isGameOver(gameStore.players)) {
@@ -565,6 +580,7 @@ function nextTurn() {
     scheduleAITurn();
   } else {
     // Menselijke speler aan de beurt
+    soundService.play('your-turn');
     // Toon pass phone als er meerdere menselijke spelers zijn
     // en de volgende speler anders is dan de huidige bottom player
     if (humanPlayers.value.length > 1 && nextPlayer.id !== bottomPlayer.value?.id) {
@@ -599,6 +615,7 @@ async function executeAITurn() {
   aiThinking.value = false;
 
   if (move.type === 'pickup') {
+    soundService.play('pile-pickup');
     const pickedUp = executePickup(player, gameStore.discardPile);
     gameStore.discardPile = [];
     showMessage(`${player.name} pakt ${pickedUp.length} kaarten`, 'warning', '🤖');
@@ -610,6 +627,7 @@ async function executeAITurn() {
     const result = executeBlindPlay(player, move.blindIndex, gameStore.discardPile);
 
     if (result.mustPickup) {
+      soundService.play('pile-pickup');
       const allCards = [...gameStore.discardPile, result.card];
       player.hand.push(...allCards);
       gameStore.discardPile = [];
@@ -618,6 +636,7 @@ async function executeAITurn() {
       return;
     }
 
+    soundService.playSpecialCard(result.card.rank);
     showMessage(`${player.name} speelt blinde kaart`, 'info', '🎴');
 
     if (result.burned) {
@@ -650,6 +669,7 @@ async function executeAITurn() {
     );
 
     if (!result.success) {
+      soundService.play('pile-pickup');
       const pickedUp = executePickup(player, gameStore.discardPile);
       gameStore.discardPile = [];
       showMessage(`${player.name} pakt stapel`, 'warning', '🤖');
@@ -657,6 +677,7 @@ async function executeAITurn() {
       return;
     }
 
+    soundService.playSpecialCard(move.cards[0].rank);
     const cardCount = move.cards.length;
     showMessage(`${player.name} speelt ${cardCount}x`, 'info', '🤖');
 
@@ -682,6 +703,15 @@ async function executeAITurn() {
 }
 
 function endGame() {
+  // Determine if any human player lost
+  const loser = gameStore.players.find(p => !p.isOut);
+  const humanLost = loser && !loser.isAI;
+
+  if (humanLost) {
+    soundService.play('game-lose');
+  } else {
+    soundService.play('game-win');
+  }
   showMessage('Spel afgelopen!', 'success', '🏆');
 }
 
@@ -715,7 +745,11 @@ async function confirmQuit() {
   await alert.present();
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Initialize sound service
+  soundService.setEnabled(settingsStore.soundEnabled);
+  await soundService.init();
+
   if (gameStore.players.length === 0) {
     const result = initializeGame(
       settingsStore.playerCount,
@@ -723,11 +757,23 @@ onMounted(() => {
       settingsStore.humanPlayerCount
     );
     gameStore.initGame(result.players, result.deck, result.deckCount);
+    soundService.play('card-shuffle');
   }
 });
 </script>
 
 <style scoped>
+.game-toolbar {
+  --background: linear-gradient(135deg, #1a5f1a 0%, #0d3d0d 100%);
+  --color: white;
+}
+
+.header-logo {
+  font-size: 1.4rem;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
 .game-content {
   --background: linear-gradient(135deg, #1a5f1a 0%, #0d3d0d 100%);
 }

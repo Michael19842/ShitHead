@@ -61,17 +61,42 @@ function handleCardClick(card: Card | undefined) {
 <style scoped>
 .card-hand {
   display: flex;
-  gap: 8px;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding: 8px;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  gap: 4px;
+}
+
+.card-hand::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+/* Overlap kaarten wanneer er veel zijn */
+.card-hand :deep(.playing-card) {
+  flex-shrink: 0;
+  margin-left: -20px;
+}
+
+.card-hand :deep(.playing-card:first-child) {
+  margin-left: 0;
+}
+
+/* Bij weinig kaarten: geen overlap nodig */
+@container (min-width: 400px) {
+  .card-hand :deep(.playing-card) {
+    margin-left: -10px;
+  }
 }
 
 .card-hand.compact {
-  gap: -20px;
+  gap: 0;
 }
 
-.card-hand.compact .playing-card:not(:first-child) {
-  margin-left: -30px;
+.card-hand.compact :deep(.playing-card:not(:first-child)) {
+  margin-left: -35px;
 }
 </style>

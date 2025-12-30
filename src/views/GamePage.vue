@@ -59,9 +59,9 @@
         <!-- Swapping phase UI -->
         <div v-if="gameStore.phase === GamePhase.SWAPPING" class="swapping-phase">
           <div class="swap-instructions">
-            <h3>Ruil je kaarten</h3>
+            <h3>{{ bottomPlayer?.name }}: Ruil je kaarten</h3>
             <p>Tap op een handkaart en dan op een open kaart om te ruilen.</p>
-            <p>Als je klaar bent, druk op "Start Spel"</p>
+            <p v-if="humanPlayers.length > 1">Speler {{ swappingPlayerIndex + 1 }} van {{ humanPlayers.length }}</p>
           </div>
 
           <!-- Human player's swapping area -->
@@ -69,7 +69,7 @@
             <div class="swap-section">
               <h4>Je hand</h4>
               <CardHand
-                :cards="humanPlayer?.hand || []"
+                :cards="bottomPlayer?.hand || []"
                 :selected-cards="swapHandCard ? [swapHandCard] : []"
                 :sorted="true"
                 @select="selectSwapHandCard"
@@ -80,7 +80,7 @@
               <h4>Open kaarten</h4>
               <div class="face-up-row">
                 <PlayingCard
-                  v-for="card in humanPlayer?.faceUp || []"
+                  v-for="card in bottomPlayer?.faceUp || []"
                   :key="card.id"
                   :card="card"
                   :selected="swapFaceUpCard?.id === card.id"
@@ -90,7 +90,20 @@
             </div>
           </div>
 
-          <ion-button expand="block" @click="startGame" class="start-button">
+          <ion-button
+            v-if="swappingPlayerIndex < humanPlayers.length - 1"
+            expand="block"
+            @click="nextSwappingPlayer"
+            class="start-button"
+          >
+            Volgende Speler
+          </ion-button>
+          <ion-button
+            v-else
+            expand="block"
+            @click="startGame"
+            class="start-button"
+          >
             Start Spel
           </ion-button>
         </div>
@@ -166,7 +179,7 @@
 
           <!-- Action buttons -->
           <Transition name="buttons">
-            <div class="action-buttons" v-if="isHumanTurn && !aiThinking">
+            <div class="action-buttons" v-if="isBottomPlayerTurn && !aiThinking && !showPassPhone">
               <ion-button
                 :disabled="!canPlaySelected"
                 @click="playSelectedCards"
@@ -198,16 +211,28 @@
             </div>
           </Transition>
 
+          <!-- Pass phone overlay voor meerdere menselijke spelers -->
+          <Transition name="pass-phone">
+            <div v-if="showPassPhone" class="pass-phone-overlay" @click="confirmPassPhone">
+              <div class="pass-phone-content">
+                <div class="pass-phone-icon">📱</div>
+                <h2>Geef de telefoon aan</h2>
+                <p class="next-player-name">{{ gameStore.currentPlayer?.name }}</p>
+                <p class="tap-hint">Tap om door te gaan</p>
+              </div>
+            </div>
+          </Transition>
+
           <!-- Current human player -->
-          <div class="human-player-section" v-if="humanPlayer">
+          <div class="human-player-section" v-if="bottomPlayer">
             <PlayerArea
-              :player="humanPlayer"
-              :is-current-player="humanPlayer.id === gameStore.currentPlayer?.id"
+              :player="bottomPlayer"
+              :is-current-player="isBottomPlayerTurn"
               :is-opponent="false"
               :selected-cards="gameStore.selectedCards"
               :discard-pile="gameStore.discardPile"
               :deck-empty="gameStore.deck.length === 0"
-              :player-phase="getPlayerPhase(humanPlayer)"
+              :player-phase="getPlayerPhase(bottomPlayer)"
               @select-card="selectCard"
               @play-face-down="playFaceDown"
             />
@@ -277,30 +302,59 @@ const aiThinking = ref(false);
 const swapHandCard = ref<Card | null>(null);
 const swapFaceUpCard = ref<Card | null>(null);
 const showBurnAnimation = ref(false);
+const showPassPhone = ref(false); // Voor "geef telefoon door" scherm
+const swappingPlayerIndex = ref(0); // Welke menselijke speler aan het swappen is
 
 // Computed
-const humanPlayer = computed(() =>
-  gameStore.players.find(p => !p.isAI)
+// De huidige actieve menselijke speler (degene die nu speelt of aan de beurt is)
+const activeHumanPlayer = computed(() => {
+  const current = gameStore.currentPlayer;
+  if (current && !current.isAI && !current.isOut) {
+    return current;
+  }
+  // Als AI aan de beurt is, toon de eerste menselijke speler die niet uit is
+  return gameStore.players.find(p => !p.isAI && !p.isOut) || null;
+});
+
+// Alle menselijke spelers (voor swapping fase)
+const humanPlayers = computed(() =>
+  gameStore.players.filter(p => !p.isAI)
 );
 
+// De speler die onderin het scherm wordt getoond
+const bottomPlayer = computed(() => {
+  if (gameStore.phase === GamePhase.SWAPPING) {
+    return humanPlayers.value[swappingPlayerIndex.value] || null;
+  }
+  return activeHumanPlayer.value;
+});
+
+// Tegenstanders: alle spelers behalve de bottom player
 const opponents = computed(() =>
-  gameStore.players.filter(p => p.isAI)
+  gameStore.players.filter(p => p.id !== bottomPlayer.value?.id)
 );
 
 const isHumanTurn = computed(() => {
-  if (!gameStore.currentPlayer || !humanPlayer.value) return false;
-  return gameStore.currentPlayer.id === humanPlayer.value.id && !humanPlayer.value.isOut;
+  const current = gameStore.currentPlayer;
+  if (!current) return false;
+  return !current.isAI && !current.isOut;
+});
+
+// Is het de beurt van de speler die onderin staat?
+const isBottomPlayerTurn = computed(() => {
+  if (!bottomPlayer.value || !gameStore.currentPlayer) return false;
+  return gameStore.currentPlayer.id === bottomPlayer.value.id;
 });
 
 const isSevenActive = computed(() => gameStore.isSevenActive);
 
 const canPlaySelected = computed(() => {
-  if (!isHumanTurn.value || gameStore.selectedCards.length === 0) return false;
+  if (!isBottomPlayerTurn.value || gameStore.selectedCards.length === 0) return false;
   return canPlayCards(gameStore.selectedCards, gameStore.discardPile);
 });
 
 const canPickup = computed(() => {
-  if (!isHumanTurn.value) return false;
+  if (!isBottomPlayerTurn.value) return false;
   return gameStore.discardPile.length > 0;
 });
 
@@ -340,15 +394,15 @@ function getPlayerPhase(player: Player): PlayerPhase {
 }
 
 function selectCard(card: Card) {
-  if (!isHumanTurn.value) return;
+  if (!isBottomPlayerTurn.value) return;
   gameStore.selectCard(card);
 }
 
 function selectSwapHandCard(card: Card) {
   swapHandCard.value = swapHandCard.value?.id === card.id ? null : card;
 
-  if (swapHandCard.value && swapFaceUpCard.value && humanPlayer.value) {
-    gameStore.swapCards(humanPlayer.value, swapHandCard.value, swapFaceUpCard.value);
+  if (swapHandCard.value && swapFaceUpCard.value && bottomPlayer.value) {
+    gameStore.swapCards(bottomPlayer.value, swapHandCard.value, swapFaceUpCard.value);
     swapHandCard.value = null;
     swapFaceUpCard.value = null;
   }
@@ -357,11 +411,21 @@ function selectSwapHandCard(card: Card) {
 function selectSwapFaceUpCard(card: Card) {
   swapFaceUpCard.value = swapFaceUpCard.value?.id === card.id ? null : card;
 
-  if (swapHandCard.value && swapFaceUpCard.value && humanPlayer.value) {
-    gameStore.swapCards(humanPlayer.value, swapHandCard.value, swapFaceUpCard.value);
+  if (swapHandCard.value && swapFaceUpCard.value && bottomPlayer.value) {
+    gameStore.swapCards(bottomPlayer.value, swapHandCard.value, swapFaceUpCard.value);
     swapHandCard.value = null;
     swapFaceUpCard.value = null;
   }
+}
+
+function nextSwappingPlayer() {
+  swapHandCard.value = null;
+  swapFaceUpCard.value = null;
+  swappingPlayerIndex.value++;
+}
+
+function confirmPassPhone() {
+  showPassPhone.value = false;
 }
 
 function startGame() {
@@ -380,12 +444,13 @@ async function triggerBurnAnimation() {
 }
 
 async function playSelectedCards() {
-  if (!canPlaySelected.value || !humanPlayer.value) return;
+  if (!canPlaySelected.value || !bottomPlayer.value) return;
 
   const cards = [...gameStore.selectedCards];
+  const player = bottomPlayer.value;
 
   const result = executePlay(
-    humanPlayer.value,
+    player,
     cards,
     gameStore.discardPile,
     gameStore.deck
@@ -401,13 +466,13 @@ async function playSelectedCards() {
   if (result.burned) {
     await triggerBurnAnimation();
     gameStore.clearDiscard();
-    checkPlayerStatus(humanPlayer.value);
+    checkPlayerStatus(player);
     return;
   }
 
   if (result.playerOut) {
-    showMessage(`${humanPlayer.value.name} is klaar!`, 'success', '🎉');
-    gameStore.setPlayerOut(humanPlayer.value.id);
+    showMessage(`${player.name} is klaar!`, 'success', '🎉');
+    gameStore.setPlayerOut(player.id);
 
     if (isGameOver(gameStore.players)) {
       endGame();
@@ -419,9 +484,9 @@ async function playSelectedCards() {
 }
 
 async function pickupPile() {
-  if (!canPickup.value || !humanPlayer.value) return;
+  if (!canPickup.value || !bottomPlayer.value) return;
 
-  const pickedUp = executePickup(humanPlayer.value, gameStore.discardPile);
+  const pickedUp = executePickup(bottomPlayer.value, gameStore.discardPile);
   gameStore.discardPile = [];
 
   showMessage(`${pickedUp.length} kaarten gepakt`, 'warning', '✋');
@@ -430,12 +495,13 @@ async function pickupPile() {
 }
 
 async function playFaceDown(index: number) {
-  if (!isHumanTurn.value || !humanPlayer.value) return;
+  if (!isBottomPlayerTurn.value || !bottomPlayer.value) return;
 
-  const phase = getPlayerPhase(humanPlayer.value);
+  const player = bottomPlayer.value;
+  const phase = getPlayerPhase(player);
   if (phase !== 'FACE_DOWN') return;
 
-  const result = executeBlindPlay(humanPlayer.value, index, gameStore.discardPile);
+  const result = executeBlindPlay(player, index, gameStore.discardPile);
 
   if (!result.success) {
     showMessage(result.message || 'Fout', 'error', '❌');
@@ -446,7 +512,7 @@ async function playFaceDown(index: number) {
 
   if (result.mustPickup) {
     const allCards = [...gameStore.discardPile, result.card];
-    humanPlayer.value.hand.push(...allCards);
+    player.hand.push(...allCards);
     gameStore.discardPile = [];
     showMessage('Niet speelbaar - Stapel gepakt!', 'warning', '😅');
     nextTurn();
@@ -456,13 +522,13 @@ async function playFaceDown(index: number) {
   if (result.burned) {
     await triggerBurnAnimation();
     gameStore.clearDiscard();
-    checkPlayerStatus(humanPlayer.value);
+    checkPlayerStatus(player);
     return;
   }
 
   if (result.playerOut) {
-    showMessage(`${humanPlayer.value.name} is klaar!`, 'success', '🎉');
-    gameStore.setPlayerOut(humanPlayer.value.id);
+    showMessage(`${player.name} is klaar!`, 'success', '🎉');
+    gameStore.setPlayerOut(player.id);
 
     if (isGameOver(gameStore.players)) {
       endGame();
@@ -492,8 +558,18 @@ function nextTurn() {
 
   gameStore.clearSelection();
 
-  if (gameStore.currentPlayer?.isAI && !gameStore.currentPlayer.isOut) {
+  const nextPlayer = gameStore.currentPlayer;
+  if (!nextPlayer || nextPlayer.isOut) return;
+
+  if (nextPlayer.isAI) {
     scheduleAITurn();
+  } else {
+    // Menselijke speler aan de beurt
+    // Toon pass phone als er meerdere menselijke spelers zijn
+    // en de volgende speler anders is dan de huidige bottom player
+    if (humanPlayers.value.length > 1 && nextPlayer.id !== bottomPlayer.value?.id) {
+      showPassPhone.value = true;
+    }
   }
 }
 
@@ -655,6 +731,11 @@ onMounted(() => {
 <style scoped>
 .game-content {
   --background: linear-gradient(135deg, #1a5f1a 0%, #0d3d0d 100%);
+}
+
+/* Safe area voor Android navigatie knoppen */
+.game-content::part(scroll) {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 .game-container {
@@ -1020,6 +1101,7 @@ onMounted(() => {
 
 .start-button {
   margin-top: 16px;
+  margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   --border-radius: 12px;
   font-weight: bold;
   font-size: 18px;
@@ -1206,6 +1288,7 @@ onMounted(() => {
   gap: 12px;
   justify-content: center;
   padding: 12px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
 }
 
 .action-buttons ion-button {
@@ -1331,6 +1414,84 @@ onMounted(() => {
 /* ==================== HUMAN PLAYER ==================== */
 .human-player-section {
   margin-top: auto;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+/* ==================== PASS PHONE OVERLAY ==================== */
+.pass-phone-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+  cursor: pointer;
+}
+
+.pass-phone-content {
+  text-align: center;
+  color: white;
+  padding: 32px;
+}
+
+.pass-phone-icon {
+  font-size: 80px;
+  animation: phone-bounce 1s ease-in-out infinite;
+}
+
+@keyframes phone-bounce {
+  0%, 100% {
+    transform: translateY(0) rotate(-10deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(10deg);
+  }
+}
+
+.pass-phone-content h2 {
+  font-size: 28px;
+  margin: 16px 0 8px;
+}
+
+.next-player-name {
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--ion-color-primary);
+  margin: 16px 0;
+}
+
+.tap-hint {
+  font-size: 16px;
+  opacity: 0.7;
+  margin-top: 32px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pass-phone-enter-active {
+  animation: fade-in 0.3s ease-out;
+}
+
+.pass-phone-leave-active {
+  animation: fade-out 0.3s ease-in;
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /* ==================== GAME OVER ==================== */

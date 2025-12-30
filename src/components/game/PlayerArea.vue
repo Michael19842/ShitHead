@@ -195,6 +195,10 @@ function handleCardClick(card: Card | undefined) {
 
 .hand-section {
   margin-top: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .opponent-hand {

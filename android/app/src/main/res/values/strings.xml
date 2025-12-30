@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Shithead</string>
+    <string name="title_activity_main">Shithead</string>
+    <string name="package_name">com.shithead.cardgame</string>
+    <string name="custom_url_scheme">com.shithead.cardgame</string>
+</resources>

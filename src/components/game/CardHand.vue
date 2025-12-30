@@ -1,15 +1,17 @@
 <template>
   <div class="card-hand" :class="{ 'compact': compact }">
-    <PlayingCard
-      v-for="card in sortedCards"
-      :key="card.id"
-      :card="card"
-      :face-down="faceDown"
-      :selected="isSelected(card)"
-      :playable="isPlayable(card)"
-      :disabled="disabled"
-      @click="handleCardClick"
-    />
+    <TransitionGroup name="hand-card">
+      <PlayingCard
+        v-for="card in sortedCards"
+        :key="card.id"
+        :card="card"
+        :face-down="faceDown"
+        :selected="isSelected(card)"
+        :playable="isPlayable(card)"
+        :disabled="disabled"
+        @click="handleCardClick"
+      />
+    </TransitionGroup>
   </div>
 </template>
 
@@ -98,5 +100,41 @@ function handleCardClick(card: Card | undefined) {
 
 .card-hand.compact :deep(.playing-card:not(:first-child)) {
   margin-left: -35px;
+}
+
+/* Card hand animations */
+.hand-card-move {
+  transition: transform 0.4s ease;
+}
+
+.hand-card-enter-active {
+  animation: card-deal-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hand-card-leave-active {
+  animation: card-play-out 0.3s ease-out forwards;
+  position: absolute;
+}
+
+@keyframes card-deal-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px) rotate(-10deg) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+@keyframes card-play-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.7);
+  }
 }
 </style>

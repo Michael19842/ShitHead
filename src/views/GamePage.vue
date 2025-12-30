@@ -59,7 +59,7 @@
         <!-- Swapping phase UI -->
         <div v-if="gameStore.phase === GamePhase.SWAPPING" class="swapping-phase">
           <div class="swap-instructions">
-            <h3>{{ bottomPlayer?.name }}: Ruil je kaarten</h3>
+            <h3>{{ bottomPlayer?.name || 'Laden...' }}: Ruil je kaarten</h3>
             <p>Tap op een handkaart en dan op een open kaart om te ruilen.</p>
             <p v-if="humanPlayers.length > 1">Speler {{ swappingPlayerIndex + 1 }} van {{ humanPlayers.length }}</p>
           </div>
@@ -722,7 +722,6 @@ onMounted(() => {
       settingsStore.playerNames,
       settingsStore.humanPlayerCount
     );
-
     gameStore.initGame(result.players, result.deck, result.deckCount);
   }
 });
@@ -1112,8 +1111,10 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   animation: fade-in 0.5s ease-out;
+  min-height: 0; /* Belangrijk voor flex overflow */
+  overflow: hidden;
 }
 
 @keyframes fade-in {
@@ -1127,15 +1128,17 @@ onMounted(() => {
 
 .opponents-section {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   justify-content: center;
   flex-wrap: wrap;
+  max-height: 30vh;
+  overflow: hidden;
 }
 
 .opponent-wrapper {
-  flex: 1;
-  max-width: 200px;
-  min-width: 150px;
+  flex: 0 1 auto;
+  max-width: 140px;
+  min-width: 100px;
 }
 
 .opponent-enter-active,
@@ -1154,13 +1157,14 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  padding: 20px;
+  gap: 16px;
+  padding: 12px;
   background: rgba(0, 0, 0, 0.3);
-  border-radius: 20px;
-  margin: 8px 0;
+  border-radius: 16px;
+  margin: 4px 0;
   backdrop-filter: blur(5px);
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .pile-wrapper {
@@ -1285,16 +1289,18 @@ onMounted(() => {
 /* ==================== ACTION BUTTONS ==================== */
 .action-buttons {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
-  padding: 12px;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding: 8px;
+  flex-shrink: 0;
 }
 
 .action-buttons ion-button {
-  --border-radius: 12px;
+  --border-radius: 10px;
   font-weight: bold;
-  min-width: 140px;
+  font-size: 14px;
+  min-width: 120px;
+  height: 40px;
 }
 
 .play-button {
@@ -1414,7 +1420,8 @@ onMounted(() => {
 /* ==================== HUMAN PLAYER ==================== */
 .human-player-section {
   margin-top: auto;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  flex-shrink: 0;
 }
 
 /* ==================== PASS PHONE OVERLAY ==================== */

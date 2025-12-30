@@ -135,6 +135,44 @@ function handleCardClick(card: Card | undefined) {
 
 .player-area.is-opponent {
   background: var(--ion-color-medium-tint);
+  padding: 6px;
+  overflow: hidden;
+}
+
+.player-area.is-opponent .player-name {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.player-area.is-opponent .table-cards {
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.player-area.is-opponent .card-slot {
+  width: 30px;
+  height: 42px;
+}
+
+.player-area.is-opponent .card-slot :deep(.playing-card) {
+  transform: scale(0.5);
+  transform-origin: top left;
+}
+
+.player-area.is-opponent .face-up-card {
+  top: 2px;
+  left: 2px;
+}
+
+.player-area.is-opponent .opponent-hand :deep(.playing-card) {
+  width: 24px;
+  height: 34px;
+}
+
+.player-area.is-opponent .opponent-card {
+  width: 24px !important;
+  height: 34px !important;
+  margin-left: -12px;
 }
 
 .player-name {

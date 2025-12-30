@@ -25,13 +25,19 @@ export const useSettingsStore = defineStore('settings', () => {
   // Actions
   function setPlayerCount(count: number) {
     playerCount.value = count
-    // Ensure we have enough player names
-    while (playerNames.value.length < count) {
-      const index = playerNames.value.length + 1
-      playerNames.value.push(`Speler ${index}`)
+
+    // Build new names array with correct length
+    const newNames: string[] = []
+    for (let i = 0; i < count; i++) {
+      if (i < playerNames.value.length) {
+        newNames.push(playerNames.value[i])
+      } else {
+        // Default name for new players
+        newNames.push(i === 0 ? 'Speler 1' : `Computer ${i}`)
+      }
     }
-    // Trim excess names
-    playerNames.value = playerNames.value.slice(0, count)
+    playerNames.value = newNames
+
     // Ensure human player count doesn't exceed total
     if (humanPlayerCount.value > count) {
       humanPlayerCount.value = count

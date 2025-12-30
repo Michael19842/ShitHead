@@ -19,6 +19,7 @@ export const useSettingsStore = defineStore('settings', () => {
       case 'slow': return 600
       case 'normal': return 300
       case 'fast': return 150
+      default: return 300
     }
   })
 

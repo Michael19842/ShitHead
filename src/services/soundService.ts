@@ -57,7 +57,7 @@ class SoundService {
   }
 
   /**
-   * Preload a single sound
+   * Preload a single sound with timeout
    */
   private async preloadSound(key: SoundEffect, path: string): Promise<void> {
     return new Promise((resolve) => {
@@ -65,12 +65,19 @@ class SoundService {
       audio.preload = 'auto';
       audio.volume = this.volume;
 
+      // Timeout after 1 second to prevent hanging
+      const timeout = setTimeout(() => {
+        resolve();
+      }, 1000);
+
       audio.addEventListener('canplaythrough', () => {
+        clearTimeout(timeout);
         this.audioCache.set(key, audio);
         resolve();
       }, { once: true });
 
       audio.addEventListener('error', () => {
+        clearTimeout(timeout);
         console.warn(`Could not load sound: ${path}`);
         resolve(); // Don't fail, just skip this sound
       }, { once: true });

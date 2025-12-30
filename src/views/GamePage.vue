@@ -243,21 +243,28 @@
         </div>
 
         <!-- Game over -->
-        <Transition name="game-over">
-          <div v-if="gameStore.phase === GamePhase.ENDED" class="game-over">
-            <div class="game-over-content">
-              <div class="trophy">💩</div>
-              <h2>Spel Afgelopen!</h2>
-              <p v-if="gameStore.loser" class="loser-text">
-                <span class="loser-name">{{ gameStore.loser.name }}</span>
-                <span class="loser-title">is de Shithead!</span>
-              </p>
-              <ion-button @click="goToGameOver" expand="block" class="results-button">
-                Bekijk Resultaten
-              </ion-button>
-            </div>
+        <div v-else-if="gameStore.phase === GamePhase.ENDED" class="game-over">
+          <div class="game-over-content">
+            <div class="trophy">💩</div>
+            <h2>Spel Afgelopen!</h2>
+            <p v-if="gameStore.loser" class="loser-text">
+              <span class="loser-name">{{ gameStore.loser.name }}</span>
+              <span class="loser-title">is de Shithead!</span>
+            </p>
+            <ion-button @click="goToGameOver" expand="block" class="results-button">
+              Bekijk Resultaten
+            </ion-button>
           </div>
-        </Transition>
+        </div>
+
+        <!-- Fallback: Loading / Setup phase -->
+        <div v-else class="loading-phase">
+          <div class="loading-content">
+            <div class="loading-icon">🃏</div>
+            <p>Spel wordt geladen...</p>
+            <p class="debug-info">Phase: {{ gameStore.phase }} | Players: {{ gameStore.players.length }}</p>
+          </div>
+        </div>
       </div>
     </ion-content>
   </ion-page>
@@ -267,13 +274,13 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonButtons, IonButton, IonIcon,
-  alertController
+  alertController, onIonViewWillEnter
 } from '@ionic/vue';
 import { closeOutline, checkmarkCircle, handLeft } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/gameStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import type { Card, Player, PlayerPhase } from '@/types';
 import { GamePhase } from '@/types';
 import PlayerArea from '@/components/game/PlayerArea.vue';
@@ -745,20 +752,49 @@ async function confirmQuit() {
   await alert.present();
 }
 
-onMounted(async () => {
-  // Initialize sound service
+// Use onIonViewWillEnter instead of onMounted to handle Ionic page caching
+onIonViewWillEnter(() => {
+  // Initialize sound service (non-blocking)
   soundService.setEnabled(settingsStore.soundEnabled);
-  await soundService.init();
-
-  if (gameStore.players.length === 0) {
-    const result = initializeGame(
-      settingsStore.playerCount,
-      settingsStore.playerNames,
-      settingsStore.humanPlayerCount
-    );
-    gameStore.initGame(result.players, result.deck, result.deckCount);
+  soundService.init().then(() => {
     soundService.play('card-shuffle');
-  }
+  });
+
+  console.log('Settings before init:', {
+    playerCount: settingsStore.playerCount,
+    humanPlayerCount: settingsStore.humanPlayerCount,
+    playerNames: settingsStore.playerNames
+  });
+
+  // Validate settings - use defaults if invalid
+  const playerCount = settingsStore.playerCount || 2;
+  const humanPlayerCount = settingsStore.humanPlayerCount || 1;
+  const playerNames = settingsStore.playerNames?.length >= playerCount
+    ? settingsStore.playerNames
+    : Array.from({ length: playerCount }, (_, i) => i === 0 ? 'Speler 1' : `Computer ${i}`);
+
+  // Reset swapping state
+  swappingPlayerIndex.value = 0;
+  swapHandCard.value = null;
+  swapFaceUpCard.value = null;
+  showPassPhone.value = false;
+  showBurnAnimation.value = false;
+
+  // Always reset and initialize a new game when entering GamePage
+  gameStore.resetGame();
+
+  const result = initializeGame(
+    playerCount,
+    playerNames,
+    humanPlayerCount
+  );
+  gameStore.initGame(result.players, result.deck, result.deckCount);
+
+  console.log('Game initialized:', {
+    phase: gameStore.phase,
+    players: gameStore.players.length,
+    humanPlayers: gameStore.players.filter(p => !p.isAI).length
+  });
 });
 </script>
 
@@ -1621,5 +1657,43 @@ onMounted(async () => {
   100% {
     opacity: 1;
   }
+}
+
+/* ==================== LOADING PHASE ==================== */
+.loading-phase {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-content {
+  text-align: center;
+  color: white;
+}
+
+.loading-icon {
+  font-size: 64px;
+  animation: loading-bounce 1s ease-in-out infinite;
+}
+
+@keyframes loading-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+.loading-content p {
+  margin: 16px 0 0;
+  font-size: 18px;
+}
+
+.debug-info {
+  font-size: 12px !important;
+  opacity: 0.6;
+  font-family: monospace;
 }
 </style>

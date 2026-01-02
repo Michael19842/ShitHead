@@ -1,5 +1,6 @@
 <template>
   <ion-page>
+    <AchievementUnlock />
     <ion-header>
       <ion-toolbar class="game-toolbar">
         <ion-title>
@@ -51,9 +52,27 @@
           </div>
         </Transition>
 
+        <!-- DEVIL EFFECT OVERLAY (666 Easter Egg) -->
+        <Transition name="devil-overlay">
+          <div v-if="showDevilEffect" class="devil-overlay">
+            <div class="devil-container">
+              <div class="devil-horns">
+                <div class="horn left"></div>
+                <div class="horn right"></div>
+              </div>
+              <div class="devil-text">
+                <span class="devil-six">6</span>
+                <span class="devil-six">6</span>
+                <span class="devil-six">6</span>
+              </div>
+              <div class="devil-emoji">😈</div>
+            </div>
+          </div>
+        </Transition>
+
         <!-- Game message overlay -->
         <Transition name="message">
-          <div v-if="gameMessage && !showBurnAnimation" class="game-message" :class="gameMessageClass">
+          <div v-if="gameMessage && !showBurnAnimation && !showDevilEffect" class="game-message" :class="gameMessageClass">
             <span class="message-icon" v-if="messageIcon">{{ messageIcon }}</span>
             {{ gameMessage }}
           </div>
@@ -154,6 +173,8 @@
                 :cards="gameStore.discardPile"
                 :face-down="false"
                 :show-count="true"
+                :show-effects="true"
+                :played-from-bottom="lastPlayedByHuman"
                 empty-text="Leg kaart"
                 :clickable="canPickup"
                 @click="pickupPile"
@@ -165,54 +186,55 @@
               </Transition>
             </div>
 
-            <!-- Burn pile -->
-            <Transition name="pile-appear">
-              <div class="pile-wrapper burn-pile" v-if="gameStore.burnPile.length > 0">
-                <span class="pile-label">Verbrand</span>
-                <CardPile
-                  :cards="gameStore.burnPile"
-                  :face-down="true"
-                  :show-count="true"
-                  empty-text=""
-                />
-                <div class="burn-glow"></div>
+            <!-- Burn pile - always reserve space to prevent layout jumping -->
+            <div class="pile-wrapper burn-pile" :class="{ 'burn-pile-hidden': gameStore.burnPile.length === 0 }">
+              <span class="pile-label">Verbrand</span>
+              <CardPile
+                :cards="gameStore.burnPile"
+                :face-down="true"
+                :show-count="true"
+                empty-text=""
+              />
+              <div class="burn-glow" v-if="gameStore.burnPile.length > 0"></div>
+            </div>
+          </div>
+
+          <!-- Action area wrapper - fixed height to prevent layout jumping -->
+          <div class="action-area-wrapper">
+            <!-- Action buttons -->
+            <Transition name="buttons">
+              <div class="action-buttons" v-if="isBottomPlayerTurn && !aiThinking && !showPassPhone">
+                <ion-button
+                  :disabled="!canPlaySelected"
+                  @click="playSelectedCards"
+                  color="success"
+                  class="play-button"
+                >
+                  <ion-icon :icon="checkmarkCircle" slot="start"></ion-icon>
+                  Speel {{ gameStore.selectedCards.length > 0 ? `(${gameStore.selectedCards.length})` : '' }}
+                </ion-button>
+                <ion-button
+                  :disabled="!canPickup"
+                  @click="pickupPile"
+                  color="warning"
+                  class="pickup-button"
+                >
+                  <ion-icon :icon="handLeft" slot="start"></ion-icon>
+                  Pak stapel
+                </ion-button>
+              </div>
+            </Transition>
+
+            <!-- AI thinking indicator -->
+            <Transition name="thinking">
+              <div v-if="aiThinking" class="ai-thinking">
+                <div class="thinking-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span class="thinking-text">{{ gameStore.currentPlayer?.name }} denkt na...</span>
               </div>
             </Transition>
           </div>
-
-          <!-- Action buttons -->
-          <Transition name="buttons">
-            <div class="action-buttons" v-if="isBottomPlayerTurn && !aiThinking && !showPassPhone">
-              <ion-button
-                :disabled="!canPlaySelected"
-                @click="playSelectedCards"
-                color="success"
-                class="play-button"
-              >
-                <ion-icon :icon="checkmarkCircle" slot="start"></ion-icon>
-                Speel {{ gameStore.selectedCards.length > 0 ? `(${gameStore.selectedCards.length})` : '' }}
-              </ion-button>
-              <ion-button
-                :disabled="!canPickup"
-                @click="pickupPile"
-                color="warning"
-                class="pickup-button"
-              >
-                <ion-icon :icon="handLeft" slot="start"></ion-icon>
-                Pak stapel
-              </ion-button>
-            </div>
-          </Transition>
-
-          <!-- AI thinking indicator -->
-          <Transition name="thinking">
-            <div v-if="aiThinking" class="ai-thinking">
-              <div class="thinking-dots">
-                <span></span><span></span><span></span>
-              </div>
-              <span class="thinking-text">{{ gameStore.currentPlayer?.name }} denkt na...</span>
-            </div>
-          </Transition>
 
           <!-- Pass phone overlay voor meerdere menselijke spelers -->
           <Transition name="pass-phone">
@@ -296,14 +318,19 @@ import {
   willCauseBurn,
   getPlayerPhase as getPhase,
   isGameOver,
-  getNextPlayerIndex
+  getNextPlayerIndex,
+  getStartingPlayerAndCards
 } from '@/services/gameEngine';
+import { RANK_NAMES_EN, RANK_NAMES_NL, SPECIAL_CARDS } from '@/types';
 import { calculateMove, getAIThinkingDelay } from '@/services/aiPlayer';
 import { soundService } from '@/services/soundService';
+import { useAchievementStore } from '@/stores/achievementStore';
+import AchievementUnlock from '@/components/AchievementUnlock.vue';
 
 const router = useRouter();
 const gameStore = useGameStore();
 const settingsStore = useSettingsStore();
+const achievementStore = useAchievementStore();
 
 // Local state
 const gameMessage = ref<string | null>(null);
@@ -313,8 +340,23 @@ const aiThinking = ref(false);
 const swapHandCard = ref<Card | null>(null);
 const swapFaceUpCard = ref<Card | null>(null);
 const showBurnAnimation = ref(false);
+const showDevilEffect = ref(false); // Easter egg voor 666
 const showPassPhone = ref(false); // Voor "geef telefoon door" scherm
+const lastPlayedByHuman = ref(false); // Track if last card was played by human (for animation direction)
 const swappingPlayerIndex = ref(0); // Welke menselijke speler aan het swappen is
+
+// Achievement tracking
+const gameStartTime = ref<number>(0);
+const burnsThisGame = ref(0);
+const pickedUpThisGame = ref(0);
+const didPickupThisGame = ref(false);
+const played2 = ref(false);
+const played3 = ref(false);
+const played7 = ref(false);
+const playedQuad = ref(false);
+const burnedWith4OfKind = ref(false);
+const blindSuccess = ref(false);
+const wonWithBlind = ref(false);
 
 // Computed
 // De huidige actieve menselijke speler (degene die nu speelt of aan de beurt is)
@@ -440,10 +482,26 @@ function confirmPassPhone() {
 }
 
 function startGame() {
-  gameStore.startPlaying();
-  showMessage('Spel gestart!', 'info', '🎮');
+  // Determine who starts based on lowest card (first 4, then 5, etc.)
+  const startingInfo = getStartingPlayerAndCards(gameStore.players);
+  gameStore.setCurrentPlayer(startingInfo.playerIndex);
 
-  if (gameStore.currentPlayer?.isAI) {
+  gameStore.startPlaying();
+
+  const startingPlayer = gameStore.players[startingInfo.playerIndex];
+  const rankNames = settingsStore.cardLanguage === 'nl' ? RANK_NAMES_NL : RANK_NAMES_EN;
+  const rankName = rankNames[startingInfo.startingRank] || startingInfo.startingRank.toString();
+  const cardCount = startingInfo.startingCards.length;
+
+  // Show message about who starts and with which card(s) they should play
+  if (cardCount > 1) {
+    showMessage(`${startingPlayer.name} begint met ${cardCount}x ${rankName}!`, 'info', '🎮');
+  } else {
+    showMessage(`${startingPlayer.name} begint met ${rankName}!`, 'info', '🎮');
+  }
+
+  // If starting player is AI, let them play
+  if (startingPlayer.isAI) {
     scheduleAITurn();
   }
 }
@@ -455,11 +513,21 @@ async function triggerBurnAnimation() {
   showBurnAnimation.value = false;
 }
 
+function triggerDevilEffect() {
+  showDevilEffect.value = true;
+  setTimeout(() => {
+    showDevilEffect.value = false;
+  }, 2500);
+}
+
 async function playSelectedCards() {
   if (!canPlaySelected.value || !bottomPlayer.value) return;
 
   const cards = [...gameStore.selectedCards];
   const player = bottomPlayer.value;
+
+  // Mark that a human player is playing (for animation direction)
+  lastPlayedByHuman.value = true;
 
   const result = executePlay(
     player,
@@ -479,7 +547,32 @@ async function playSelectedCards() {
   const cardRank = cards[0].rank;
   soundService.playSpecialCard(cardRank);
 
+  // Track special cards for achievements (only for human players)
+  if (!player.isAI) {
+    if (cardRank === 2) played2.value = true;
+    if (cardRank === 3) played3.value = true;
+    if (cardRank === 7) played7.value = true;
+    if (cards.length >= 4) playedQuad.value = true;
+
+    // Check for 666 (three sixes) - easter egg achievement
+    if (cardRank === 6 && cards.length === 3) {
+      achievementStore.unlock('play_666');
+      triggerDevilEffect();
+    }
+  }
+
+  // Reverse direction if Jack is played
+  if (cardRank === SPECIAL_CARDS.JACK) {
+    gameStore.reverseDirection();
+    showMessage('Richting omgedraaid!', 'info', '🔃');
+  }
+
   if (result.burned) {
+    burnsThisGame.value++;
+    // Check if burned with 4-of-a-kind (not a 10)
+    if (!player.isAI && cardRank !== 10 && cards.length >= 4) {
+      burnedWith4OfKind.value = true;
+    }
     await triggerBurnAnimation();
     gameStore.clearDiscard();
     checkPlayerStatus(player);
@@ -505,6 +598,13 @@ async function pickupPile() {
 
   soundService.play('pile-pickup');
   const pickedUp = executePickup(bottomPlayer.value, gameStore.discardPile);
+
+  // Track pickup for achievements (only for human players)
+  if (!bottomPlayer.value.isAI) {
+    didPickupThisGame.value = true;
+    pickedUpThisGame.value += pickedUp.length;
+  }
+
   gameStore.discardPile = [];
 
   showMessage(`${pickedUp.length} kaarten gepakt`, 'warning', '✋');
@@ -519,6 +619,9 @@ async function playFaceDown(index: number) {
   const phase = getPlayerPhase(player);
   if (phase !== 'FACE_DOWN') return;
 
+  // Mark that a human player is playing (for animation direction)
+  lastPlayedByHuman.value = true;
+
   const result = executeBlindPlay(player, index, gameStore.discardPile);
 
   if (!result.success) {
@@ -529,9 +632,27 @@ async function playFaceDown(index: number) {
   soundService.playSpecialCard(result.card.rank);
   showMessage(`Gespeeld: ${result.card.rank}`, 'info', '🎴');
 
+  // Track blind card play for achievements (only for human players)
+  if (!player.isAI && !result.mustPickup) {
+    blindSuccess.value = true;
+  }
+
+  // Reverse direction if Jack is played (blind)
+  if (result.card.rank === SPECIAL_CARDS.JACK && !result.mustPickup) {
+    gameStore.reverseDirection();
+    showMessage('Richting omgedraaid!', 'info', '🔃');
+  }
+
   if (result.mustPickup) {
     soundService.play('pile-pickup');
     const allCards = [...gameStore.discardPile, result.card];
+
+    // Track pickup for achievements
+    if (!player.isAI) {
+      didPickupThisGame.value = true;
+      pickedUpThisGame.value += allCards.length;
+    }
+
     player.hand.push(...allCards);
     gameStore.discardPile = [];
     showMessage('Niet speelbaar - Stapel gepakt!', 'warning', '😅');
@@ -540,6 +661,7 @@ async function playFaceDown(index: number) {
   }
 
   if (result.burned) {
+    burnsThisGame.value++;
     await triggerBurnAnimation();
     gameStore.clearDiscard();
     checkPlayerStatus(player);
@@ -547,6 +669,10 @@ async function playFaceDown(index: number) {
   }
 
   if (result.playerOut) {
+    // Track winning with blind card
+    if (!player.isAI) {
+      wonWithBlind.value = true;
+    }
     soundService.play('player-out');
     showMessage(`${player.name} is klaar!`, 'success', '🎉');
     gameStore.setPlayerOut(player.id);
@@ -631,6 +757,9 @@ async function executeAITurn() {
   }
 
   if (move.type === 'blind' && move.blindIndex !== undefined) {
+    // Mark that AI is playing (for animation direction)
+    lastPlayedByHuman.value = false;
+
     const result = executeBlindPlay(player, move.blindIndex, gameStore.discardPile);
 
     if (result.mustPickup) {
@@ -645,6 +774,11 @@ async function executeAITurn() {
 
     soundService.playSpecialCard(result.card.rank);
     showMessage(`${player.name} speelt blinde kaart`, 'info', '🎴');
+
+    // Reverse direction if Jack is played (AI blind)
+    if (result.card.rank === SPECIAL_CARDS.JACK) {
+      gameStore.reverseDirection();
+    }
 
     if (result.burned) {
       await triggerBurnAnimation();
@@ -668,6 +802,9 @@ async function executeAITurn() {
   }
 
   if (move.type === 'play' && move.cards) {
+    // Mark that AI is playing (for animation direction)
+    lastPlayedByHuman.value = false;
+
     const result = executePlay(
       player,
       move.cards,
@@ -684,9 +821,15 @@ async function executeAITurn() {
       return;
     }
 
-    soundService.playSpecialCard(move.cards[0].rank);
+    const aiCardRank = move.cards[0].rank;
+    soundService.playSpecialCard(aiCardRank);
     const cardCount = move.cards.length;
     showMessage(`${player.name} speelt ${cardCount}x`, 'info', '🤖');
+
+    // Reverse direction if Jack is played
+    if (aiCardRank === SPECIAL_CARDS.JACK) {
+      gameStore.reverseDirection();
+    }
 
     if (result.burned) {
       await triggerBurnAnimation();
@@ -713,6 +856,7 @@ function endGame() {
   // Determine if any human player lost
   const loser = gameStore.players.find(p => !p.isOut);
   const humanLost = loser && !loser.isAI;
+  const humanWon = !humanLost;
 
   if (humanLost) {
     soundService.play('game-lose');
@@ -720,6 +864,24 @@ function endGame() {
     soundService.play('game-win');
   }
   showMessage('Spel afgelopen!', 'success', '🏆');
+
+  // Record achievements for human players
+  const gameDuration = Date.now() - gameStartTime.value;
+  achievementStore.recordGameResult({
+    won: humanWon,
+    isOnline: false,
+    burnsInGame: burnsThisGame.value,
+    pickedUpTotal: pickedUpThisGame.value,
+    didPickup: didPickupThisGame.value,
+    gameDurationMs: gameDuration,
+    playedQuad: playedQuad.value,
+    played2: played2.value,
+    played3: played3.value,
+    played7: played7.value,
+    burnedWith4OfKind: burnedWith4OfKind.value,
+    blindSuccess: blindSuccess.value,
+    wonWithBlind: humanWon && wonWithBlind.value
+  });
 }
 
 function goToGameOver() {
@@ -780,6 +942,19 @@ onIonViewWillEnter(() => {
   showPassPhone.value = false;
   showBurnAnimation.value = false;
 
+  // Reset achievement tracking
+  gameStartTime.value = Date.now();
+  burnsThisGame.value = 0;
+  pickedUpThisGame.value = 0;
+  didPickupThisGame.value = false;
+  played2.value = false;
+  played3.value = false;
+  played7.value = false;
+  playedQuad.value = false;
+  burnedWith4OfKind.value = false;
+  blindSuccess.value = false;
+  wonWithBlind.value = false;
+
   // Always reset and initialize a new game when entering GamePage
   gameStore.resetGame();
 
@@ -800,7 +975,7 @@ onIonViewWillEnter(() => {
 
 <style scoped>
 .game-toolbar {
-  --background: linear-gradient(135deg, #1a5f1a 0%, #0d3d0d 100%);
+  --background: linear-gradient(135deg, #6B4423 0%, #4a2f18 100%);
   --color: white;
 }
 
@@ -808,10 +983,17 @@ onIonViewWillEnter(() => {
   font-size: 1.4rem;
   margin-right: 0.3rem;
   vertical-align: middle;
+  display: inline-block;
+  animation: poop-bounce 2s ease-in-out infinite;
+}
+
+@keyframes poop-bounce {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-3px) rotate(5deg); }
 }
 
 .game-content {
-  --background: linear-gradient(135deg, #1a5f1a 0%, #0d3d0d 100%);
+  --background: #5D4E37;
 }
 
 /* Safe area voor Android navigatie knoppen */
@@ -826,6 +1008,51 @@ onIonViewWillEnter(() => {
   padding: 8px;
   position: relative;
   overflow: hidden;
+
+  /* Warme houten tafel achtergrond */
+  background:
+    /* Zachte vignet voor diepte */
+    radial-gradient(
+      ellipse at 50% 50%,
+      transparent 0%,
+      rgba(0, 0, 0, 0.15) 100%
+    ),
+    /* Warme gradient */
+    linear-gradient(
+      160deg,
+      #7D6B5A 0%,
+      #5D4E37 30%,
+      #4A3D2A 70%,
+      #3D3222 100%
+    );
+}
+
+/* Speelse emoji decoraties in de hoeken */
+.game-container::before {
+  content: '🃏';
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font-size: 20px;
+  opacity: 0.2;
+  pointer-events: none;
+  animation: card-float 4s ease-in-out infinite;
+}
+
+.game-container::after {
+  content: '🎴';
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 20px;
+  opacity: 0.2;
+  pointer-events: none;
+  animation: card-float 4s ease-in-out infinite reverse;
+}
+
+@keyframes card-float {
+  0%, 100% { transform: translateY(0) rotate(-10deg); }
+  50% { transform: translateY(-5px) rotate(10deg); }
 }
 
 /* ==================== BURN ANIMATION ==================== */
@@ -1212,15 +1439,25 @@ onIonViewWillEnter(() => {
   display: flex;
   gap: 4px;
   justify-content: center;
-  flex-wrap: wrap;
-  max-height: 30vh;
-  overflow: hidden;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  min-height: 100px; /* Fixed minimum height to prevent layout jumping */
+  flex-shrink: 0;
+}
+
+.opponents-section::-webkit-scrollbar {
+  display: none;
 }
 
 .opponent-wrapper {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  width: calc((100% - 12px) / 3); /* 3 opponents max, with gaps */
+  min-width: 90px;
   max-width: 140px;
-  min-width: 100px;
 }
 
 .opponent-enter-active,
@@ -1240,12 +1477,16 @@ onIonViewWillEnter(() => {
   justify-content: center;
   align-items: center;
   gap: 16px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 16px;
-  margin: 4px 0;
-  backdrop-filter: blur(5px);
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+  padding: 16px 20px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 70%),
+    rgba(0, 0, 0, 0.25);
+  border-radius: 24px;
+  margin: 8px 4px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 2px 15px rgba(0, 0, 0, 0.2),
+    0 4px 20px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
 }
 
@@ -1255,14 +1496,24 @@ onIonViewWillEnter(() => {
   align-items: center;
   gap: 8px;
   position: relative;
+  padding: 8px;
+  border-radius: 12px;
+  transition: transform 0.2s ease;
+}
+
+.pile-wrapper:hover {
+  transform: translateY(-2px);
 }
 
 .pile-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 10px;
 }
 
 .discard-pile.can-pickup :deep(.card-pile) {
@@ -1319,6 +1570,11 @@ onIonViewWillEnter(() => {
   position: relative;
 }
 
+.burn-pile-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .burn-glow {
   position: absolute;
   inset: -10px;
@@ -1368,29 +1624,51 @@ onIonViewWillEnter(() => {
   }
 }
 
+/* ==================== ACTION AREA WRAPPER ==================== */
+.action-area-wrapper {
+  min-height: 70px; /* Fixed height to prevent layout jumping */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
 /* ==================== ACTION BUTTONS ==================== */
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   justify-content: center;
-  padding: 8px;
+  padding: 12px;
   flex-shrink: 0;
 }
 
 .action-buttons ion-button {
-  --border-radius: 10px;
+  --border-radius: 16px;
   font-weight: bold;
-  font-size: 14px;
-  min-width: 120px;
-  height: 40px;
+  font-size: 15px;
+  min-width: 130px;
+  height: 46px;
+  text-transform: none;
+  letter-spacing: 0.5px;
 }
 
 .play-button {
-  --box-shadow: 0 4px 15px rgba(46, 125, 50, 0.4);
+  --background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+  --box-shadow: 0 4px 15px rgba(46, 125, 50, 0.5);
+}
+
+.play-button:active {
+  --box-shadow: 0 2px 8px rgba(46, 125, 50, 0.5);
 }
 
 .pickup-button {
-  --box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+  --background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  --box-shadow: 0 4px 15px rgba(255, 152, 0, 0.5);
+}
+
+.pickup-button:active {
+  --box-shadow: 0 2px 8px rgba(255, 152, 0, 0.5);
 }
 
 .buttons-enter-active {
@@ -1428,9 +1706,11 @@ onIonViewWillEnter(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 16px;
+  padding: 12px;
   color: white;
   font-size: 16px;
+  position: absolute;
+  inset: 0;
 }
 
 .thinking-dots {
@@ -1695,5 +1975,153 @@ onIonViewWillEnter(() => {
   font-size: 12px !important;
   opacity: 0.6;
   font-family: monospace;
+}
+
+/* ==================== DEVIL EFFECT (666 Easter Egg) ==================== */
+.devil-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(139, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.95) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.devil-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: devil-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes devil-pulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  100% {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+}
+
+.devil-horns {
+  display: flex;
+  gap: 60px;
+  margin-bottom: -10px;
+}
+
+.horn {
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 50px solid #8b0000;
+  filter: drop-shadow(0 0 10px #ff0000);
+  animation: horn-grow 0.5s ease-out forwards;
+}
+
+.horn.left {
+  transform: rotate(-20deg);
+}
+
+.horn.right {
+  transform: rotate(20deg);
+}
+
+@keyframes horn-grow {
+  0% {
+    border-bottom-width: 0;
+    opacity: 0;
+  }
+  100% {
+    border-bottom-width: 50px;
+    opacity: 1;
+  }
+}
+
+.devil-text {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.devil-six {
+  font-size: 80px;
+  font-weight: bold;
+  color: #ff0000;
+  text-shadow:
+    0 0 20px #ff0000,
+    0 0 40px #ff0000,
+    0 0 60px #8b0000;
+  animation: six-flicker 0.1s ease-in-out infinite alternate;
+}
+
+.devil-six:nth-child(1) { animation-delay: 0s; }
+.devil-six:nth-child(2) { animation-delay: 0.05s; }
+.devil-six:nth-child(3) { animation-delay: 0.1s; }
+
+@keyframes six-flicker {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.devil-emoji {
+  font-size: 60px;
+  animation: devil-bounce 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes devil-bounce {
+  0% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  100% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+}
+
+/* Devil overlay transitions */
+.devil-overlay-enter-active {
+  animation: devil-enter 0.3s ease-out;
+}
+
+.devil-overlay-leave-active {
+  animation: devil-leave 0.5s ease-in;
+}
+
+@keyframes devil-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes devil-leave {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+    filter: blur(10px);
+  }
 }
 </style>

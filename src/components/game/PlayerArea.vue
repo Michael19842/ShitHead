@@ -15,6 +15,7 @@
           :card="player.faceDown[i - 1]"
           :face-down="true"
           :disabled="!canPlayFaceDown"
+          :locked="!canPlayFaceDown && !isOpponent && player.faceUp.length > 0"
           class="face-down-card"
           @click="$emit('playFaceDown', i - 1)"
         />
@@ -27,6 +28,7 @@
           :selected="isSelected(player.faceUp[i - 1])"
           :playable="canPlayFaceUp && isPlayable(player.faceUp[i - 1])"
           :disabled="!canPlayFaceUp"
+          :locked="!canPlayFaceUp && !isOpponent"
           class="face-up-card"
           @click="handleCardClick(player.faceUp[i - 1])"
         />
@@ -123,20 +125,31 @@ function handleCardClick(card: Card | undefined) {
 <style scoped>
 .player-area {
   padding: 12px;
-  border-radius: 12px;
-  background: var(--ion-color-light);
-  transition: background 0.3s;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
 }
 
 .player-area.is-current {
-  background: var(--ion-color-primary-tint);
-  box-shadow: 0 0 0 2px var(--ion-color-primary);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 200, 100, 0.5);
+  box-shadow:
+    0 0 20px rgba(255, 180, 80, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
 }
 
 .player-area.is-opponent {
-  background: var(--ion-color-medium-tint);
+  background: rgba(0, 0, 0, 0.2);
   padding: 6px;
   overflow: hidden;
+  border-radius: 12px;
+}
+
+.player-area.is-opponent.is-current {
+  background: rgba(255, 200, 100, 0.15);
+  border-color: rgba(255, 180, 80, 0.4);
 }
 
 .player-area.is-opponent .player-name {
@@ -181,22 +194,34 @@ function handleCardClick(card: Card | undefined) {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .turn-indicator {
-  font-size: 12px;
-  background: var(--ion-color-primary);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #FFB74D 0%, #FF9800 100%);
+  color: #3E2723;
+  padding: 3px 10px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.02); }
 }
 
 .out-indicator {
-  font-size: 12px;
-  background: var(--ion-color-success);
+  font-size: 11px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #81C784 0%, #4CAF50 100%);
   color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
 }
 
 .table-cards {
@@ -227,8 +252,9 @@ function handleCardClick(card: Card | undefined) {
 .empty-slot {
   width: 60px;
   height: 84px;
-  border: 1px dashed var(--ion-color-medium);
-  border-radius: 6px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .hand-section {
@@ -237,6 +263,7 @@ function handleCardClick(card: Card | undefined) {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  min-height: 100px; /* Fixed height to prevent layout jumping when cards change */
 }
 
 .opponent-hand {
@@ -257,13 +284,15 @@ function handleCardClick(card: Card | undefined) {
 
 .hand-count {
   position: absolute;
-  right: -10px;
+  right: -8px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--ion-color-dark);
-  color: white;
-  font-size: 12px;
-  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 7px;
   border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 </style>

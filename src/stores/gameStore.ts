@@ -14,6 +14,7 @@ export const useGameStore = defineStore('game', () => {
   const deckCount = ref(1)
   const lastAction = ref<GameAction | null>(null)
   const selectedCards = ref<Card[]>([])
+  const playDirection = ref<1 | -1>(1) // 1 = clockwise, -1 = counter-clockwise
 
   // Getters
   const currentPlayer = computed(() => players.value[currentPlayerIndex.value])
@@ -77,6 +78,7 @@ export const useGameStore = defineStore('game', () => {
     currentPlayerIndex.value = 0
     lastAction.value = null
     selectedCards.value = []
+    playDirection.value = 1 // Reset to clockwise
   }
 
   function startPlaying() {
@@ -88,14 +90,24 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function nextPlayer() {
-    let nextIndex = (currentPlayerIndex.value + 1) % players.value.length
+    const direction = playDirection.value
+    let nextIndex = currentPlayerIndex.value
+    const playerCount = players.value.length
+
+    // Move in the current direction
+    nextIndex = ((nextIndex + direction) % playerCount + playerCount) % playerCount
+
     // Skip players who are out
     while (players.value[nextIndex].isOut) {
-      nextIndex = (nextIndex + 1) % players.value.length
+      nextIndex = ((nextIndex + direction) % playerCount + playerCount) % playerCount
       // Safety check to prevent infinite loop
       if (nextIndex === currentPlayerIndex.value) break
     }
     currentPlayerIndex.value = nextIndex
+  }
+
+  function reverseDirection() {
+    playDirection.value = playDirection.value === 1 ? -1 : 1
   }
 
   function addToDiscard(cards: Card[]) {
@@ -156,6 +168,9 @@ export const useGameStore = defineStore('game', () => {
       // Only allow selecting cards of the same rank
       if (selectedCards.value.length === 0 || selectedCards.value[0].rank === card.rank) {
         selectedCards.value.push(card)
+      } else {
+        // Different rank - replace entire selection with new card
+        selectedCards.value = [card]
       }
     } else {
       selectedCards.value.splice(index, 1)
@@ -186,6 +201,7 @@ export const useGameStore = defineStore('game', () => {
     deckCount.value = 1
     lastAction.value = null
     selectedCards.value = []
+    playDirection.value = 1 // Reset to clockwise
   }
 
   return {
@@ -199,6 +215,7 @@ export const useGameStore = defineStore('game', () => {
     deckCount,
     lastAction,
     selectedCards,
+    playDirection,
     // Getters
     currentPlayer,
     activePlayers,
@@ -213,6 +230,7 @@ export const useGameStore = defineStore('game', () => {
     startPlaying,
     setCurrentPlayer,
     nextPlayer,
+    reverseDirection,
     addToDiscard,
     clearDiscard,
     pickupDiscard,

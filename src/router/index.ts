@@ -35,6 +35,45 @@ const routes: Array<RouteRecordRaw> = [
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/SettingsPage.vue')
+  },
+  {
+    path: '/achievements',
+    name: 'Achievements',
+    component: () => import('@/views/AchievementsPage.vue')
+  },
+  // Online multiplayer routes
+  {
+    path: '/online',
+    name: 'OnlineMenu',
+    component: () => import('@/views/online/OnlineMenuPage.vue')
+  },
+  {
+    path: '/online/register',
+    name: 'Registration',
+    component: () => import('@/views/online/RegistrationPage.vue')
+  },
+  {
+    path: '/online/matchmaking',
+    name: 'Matchmaking',
+    component: () => import('@/views/online/MatchmakingPage.vue')
+  },
+  {
+    path: '/online/lobby/:lobbyId',
+    name: 'Lobby',
+    component: () => import('@/views/online/LobbyPage.vue'),
+    props: true
+  },
+  {
+    path: '/online/game/:gameId',
+    name: 'OnlineGame',
+    component: () => import('@/views/online/OnlineGamePage.vue'),
+    props: true
+  },
+  {
+    path: '/online/game-over/:gameId',
+    name: 'OnlineGameOver',
+    component: () => import('@/views/online/OnlineGameOverPage.vue'),
+    props: true
   }
 ]
 

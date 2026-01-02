@@ -110,6 +110,13 @@ export function canPlayCards(cards: Card[], discardPile: Card[]): boolean {
 
 /**
  * Check if playing these cards will cause a burn
+ *
+ * Burn rules:
+ * - Playing a 10 always burns
+ * - Four of the same rank on top burns (e.g., 4444)
+ * - Four of the same rank with 3's in between also burns (e.g., 44434, 43444)
+ * - BUT: Four 3's only burn if they are consecutive (3333), not if other cards are mixed in
+ *   (e.g., 33343 does NOT burn because 3's don't "look through" themselves)
  */
 export function willCauseBurn(cards: Card[], discardPile: Card[]): { burn: boolean; reason?: 'ten' | 'four_of_a_kind' } {
   // Playing a 10 always burns
@@ -117,16 +124,39 @@ export function willCauseBurn(cards: Card[], discardPile: Card[]): { burn: boole
     return { burn: true, reason: 'ten' };
   }
 
-  // Check for four of a kind
   const rank = cards[0].rank;
   let count = cards.length;
 
-  // Count matching cards already on the pile
+  // If playing 3's, count consecutive 3's only (3's don't look through themselves)
+  if (rank === SPECIAL_CARDS.THREE) {
+    // Count consecutive 3's on top of pile
+    for (let i = discardPile.length - 1; i >= 0; i--) {
+      if (discardPile[i].rank === SPECIAL_CARDS.THREE) {
+        count++;
+      } else {
+        break; // Stop at first non-3
+      }
+    }
+
+    if (count >= 4) {
+      return { burn: true, reason: 'four_of_a_kind' };
+    }
+    return { burn: false };
+  }
+
+  // For non-3 cards: count matching cards, skipping over 3's (glass cards)
   for (let i = discardPile.length - 1; i >= 0; i--) {
-    if (discardPile[i].rank === rank) {
+    const pileCard = discardPile[i];
+
+    if (pileCard.rank === rank) {
+      // Same rank, count it
       count++;
+    } else if (pileCard.rank === SPECIAL_CARDS.THREE) {
+      // 3 is glass/transparent, skip it and keep looking
+      continue;
     } else {
-      break; // Stop counting when we hit a different rank
+      // Different rank (not a 3), stop counting
+      break;
     }
   }
 
@@ -298,13 +328,16 @@ export function executePickup(player: Player, discardPile: Card[]): Card[] {
 export function getNextPlayerIndex(
   currentIndex: number,
   players: Player[],
-  skipCount = 1
+  skipCount = 1,
+  direction: 1 | -1 = 1
 ): number {
   let nextIndex = currentIndex;
   let skipped = 0;
+  const playerCount = players.length;
 
   while (skipped < skipCount) {
-    nextIndex = (nextIndex + 1) % players.length;
+    // Handle both positive and negative directions with proper modulo
+    nextIndex = ((nextIndex + direction) % playerCount + playerCount) % playerCount;
     if (!players[nextIndex].isOut) {
       skipped++;
     }
@@ -337,6 +370,75 @@ export function isGameOver(players: Player[]): boolean {
 export function getLoser(players: Player[]): Player | null {
   const active = players.filter(p => !p.isOut);
   return active.length === 1 ? active[0] : null;
+}
+
+// ============================================================================
+// STARTING PLAYER DETERMINATION
+// ============================================================================
+
+/**
+ * Determine which player starts the game based on lowest card in hand.
+ * The player with the lowest card (first checking for 4, then 5, etc.) starts.
+ * Returns the index of the starting player.
+ */
+export function determineStartingPlayer(players: Player[]): number {
+  const result = getStartingPlayerAndCards(players);
+  return result.playerIndex;
+}
+
+/**
+ * Result of determining the starting player and their opening cards
+ */
+export interface StartingPlayerResult {
+  playerIndex: number;
+  startingCards: Card[];
+  startingRank: number;
+}
+
+/**
+ * Determine which player starts and which cards they must play first.
+ * The player with the lowest card (starting from 4) starts and must play
+ * ALL cards of that rank from their hand.
+ */
+export function getStartingPlayerAndCards(players: Player[]): StartingPlayerResult {
+  // Start checking from rank 4, then 5, 6, etc. up to Ace (14)
+  // We skip 2 and 3 because they are special cards
+  for (let rank = 4; rank <= 14; rank++) {
+    for (let playerIndex = 0; playerIndex < players.length; playerIndex++) {
+      const player = players[playerIndex];
+      // Find all cards of this rank in hand
+      const matchingCards = player.hand.filter(card => card.rank === rank);
+      if (matchingCards.length > 0) {
+        return {
+          playerIndex,
+          startingCards: matchingCards,
+          startingRank: rank
+        };
+      }
+    }
+  }
+
+  // If no one has 4-14, check for 3s and 2s (unlikely but possible)
+  for (let rank = 3; rank >= 2; rank--) {
+    for (let playerIndex = 0; playerIndex < players.length; playerIndex++) {
+      const player = players[playerIndex];
+      const matchingCards = player.hand.filter(card => card.rank === rank);
+      if (matchingCards.length > 0) {
+        return {
+          playerIndex,
+          startingCards: matchingCards,
+          startingRank: rank
+        };
+      }
+    }
+  }
+
+  // Fallback: first player starts with no forced cards
+  return {
+    playerIndex: 0,
+    startingCards: [],
+    startingRank: 0
+  };
 }
 
 // ============================================================================

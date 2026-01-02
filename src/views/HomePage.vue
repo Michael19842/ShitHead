@@ -1,7 +1,13 @@
 <template>
   <ion-page>
+    <AchievementUnlock />
     <ion-content :fullscreen="true" class="home-content">
       <div class="home-container">
+        <!-- Trophy button top right -->
+        <button class="trophy-button" @click="router.push('/achievements')">
+          <span class="trophy-emoji">🏆</span>
+          <span class="trophy-count">{{ achievementStore.unlockedCount }}/{{ achievementStore.totalCount }}</span>
+        </button>
         <!-- Animated background cards -->
         <div class="bg-cards">
           <div class="bg-card" v-for="i in 6" :key="i" :style="{ '--delay': `${i * 0.5}s`, '--x': `${(i * 17) % 100}%` }"></div>
@@ -30,6 +36,11 @@
             Nieuw Spel
           </ion-button>
 
+          <ion-button expand="block" size="large" @click="router.push('/online')" class="online-button">
+            <ion-icon slot="start" :icon="globe"></ion-icon>
+            Online Spelen
+          </ion-button>
+
           <ion-button expand="block" size="large" fill="outline" @click="router.push('/rules')" class="menu-button">
             <ion-icon slot="start" :icon="bookOutline"></ion-icon>
             Spelregels
@@ -51,10 +62,20 @@
 
 <script setup lang="ts">
 import { IonContent, IonPage, IonButton, IonIcon } from '@ionic/vue';
-import { playCircle, bookOutline, settingsOutline } from 'ionicons/icons';
+import { playCircle, bookOutline, settingsOutline, globe } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
+import { onMounted } from 'vue';
+import { useAchievementStore } from '@/stores/achievementStore';
+import AchievementUnlock from '@/components/AchievementUnlock.vue';
 
 const router = useRouter();
+const achievementStore = useAchievementStore();
+
+onMounted(async () => {
+  if (!achievementStore.isInitialized) {
+    await achievementStore.load();
+  }
+});
 </script>
 
 <style scoped>
@@ -255,6 +276,24 @@ const router = useRouter();
   transform: translateY(-2px);
 }
 
+.online-button {
+  --background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  --background-hover: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  --border-radius: 16px;
+  --box-shadow: 0 8px 20px rgba(21, 101, 192, 0.4);
+  font-weight: bold;
+  font-size: 1.1rem;
+  height: 56px;
+}
+
+.online-button::part(native) {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.online-button:hover::part(native) {
+  transform: translateY(-2px);
+}
+
 .menu-button {
   --border-radius: 16px;
   --border-width: 2px;
@@ -282,5 +321,43 @@ const router = useRouter();
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.9rem;
   margin: 0;
+}
+
+/* Trophy button */
+.trophy-button {
+  position: absolute;
+  top: env(safe-area-inset-top, 16px);
+  right: 16px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 20px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  margin-top: 16px;
+}
+
+.trophy-button:hover {
+  background: rgba(255, 215, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.trophy-button:active {
+  transform: scale(0.98);
+}
+
+.trophy-emoji {
+  font-size: 20px;
+}
+
+.trophy-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd700;
 }
 </style>

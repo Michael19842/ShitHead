@@ -37,7 +37,7 @@
         <ion-item>
           <ion-label>
             <h3>3 - Glas</h3>
-            <p>Mag overal op gespeeld worden. De volgende speler moet de kaart onder de 3 verslaan.</p>
+            <p>Mag overal op gespeeld worden. De volgende speler moet de kaart onder de 3 verslaan. Je ziet de onderliggende kaart door het glas heen.</p>
           </ion-label>
         </ion-item>
         <ion-item>
@@ -52,6 +52,12 @@
             <p>Verbrandt de hele aflegstapel. Deze kaarten doen niet meer mee.</p>
           </ion-label>
         </ion-item>
+        <ion-item>
+          <ion-label>
+            <h3>Boer - Omkeren</h3>
+            <p>Draait de speelrichting om. De volgende speler is nu degene die normaal voor je zat.</p>
+          </ion-label>
+        </ion-item>
       </ion-list>
 
       <h2>Verbranden</h2>
@@ -59,7 +65,9 @@
       <ul>
         <li>Een 10 wordt gespeeld</li>
         <li>4 kaarten van dezelfde waarde op elkaar liggen</li>
+        <li>4 kaarten van dezelfde waarde met 3'en ertussen (bijv. 4-4-3-4-4)</li>
       </ul>
+      <p><em>Let op: dit werkt niet met 3'en zelf - 3-3-3-4-3 brandt niet!</em></p>
 
       <h2>Eindfase</h2>
       <ol>

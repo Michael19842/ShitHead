@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AIDifficulty } from '@/types'
 
+export type CardLanguage = 'nl' | 'en'
+export type CardBackStyle = 'classic' | 'modern' | 'royal' | 'minimal'
+
 export const useSettingsStore = defineStore('settings', () => {
   // State
   const playerCount = ref(2)
@@ -10,6 +13,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const playerNames = ref<string[]>(['Speler 1', 'Computer'])
   const soundEnabled = ref(true)
   const animationSpeed = ref<'slow' | 'normal' | 'fast'>('normal')
+  const cardLanguage = ref<CardLanguage>('nl') // nl = B,V,H,A | en = J,Q,K,A
+  const cardBackStyle = ref<CardBackStyle>('classic')
 
   // Getters
   const aiPlayerCount = computed(() => playerCount.value - humanPlayerCount.value)
@@ -67,6 +72,14 @@ export const useSettingsStore = defineStore('settings', () => {
     animationSpeed.value = speed
   }
 
+  function setCardLanguage(language: CardLanguage) {
+    cardLanguage.value = language
+  }
+
+  function setCardBackStyle(style: CardBackStyle) {
+    cardBackStyle.value = style
+  }
+
   function resetToDefaults() {
     playerCount.value = 2
     humanPlayerCount.value = 1
@@ -74,6 +87,8 @@ export const useSettingsStore = defineStore('settings', () => {
     playerNames.value = ['Speler 1', 'Computer']
     soundEnabled.value = true
     animationSpeed.value = 'normal'
+    cardLanguage.value = 'nl'
+    cardBackStyle.value = 'classic'
   }
 
   return {
@@ -84,6 +99,8 @@ export const useSettingsStore = defineStore('settings', () => {
     playerNames,
     soundEnabled,
     animationSpeed,
+    cardLanguage,
+    cardBackStyle,
     // Getters
     aiPlayerCount,
     animationDuration,
@@ -94,6 +111,8 @@ export const useSettingsStore = defineStore('settings', () => {
     setPlayerName,
     setSoundEnabled,
     setAnimationSpeed,
+    setCardLanguage,
+    setCardBackStyle,
     resetToDefaults,
   }
 })

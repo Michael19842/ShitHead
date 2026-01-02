@@ -11,12 +11,14 @@ export type SoundEffect =
   | 'special-glass'    // 3
   | 'special-cap'      // 7
   | 'special-burn'     // 10
+  | 'special-reverse'  // Jack (11)
   | 'burn-combo'       // 4-of-a-kind
   | 'your-turn'
   | 'player-out'
   | 'game-win'
   | 'game-lose'
-  | 'button-click';
+  | 'button-click'
+  | 'achievement';
 
 // Map sound effects to their file paths
 const SOUND_FILES: Record<SoundEffect, string> = {
@@ -27,12 +29,14 @@ const SOUND_FILES: Record<SoundEffect, string> = {
   'special-glass': '/sounds/special-glass.mp3',
   'special-cap': '/sounds/special-cap.mp3',
   'special-burn': '/sounds/special-burn.mp3',
+  'special-reverse': '/sounds/special-reverse.mp3',
   'burn-combo': '/sounds/burn-combo.mp3',
   'your-turn': '/sounds/your-turn.mp3',
   'player-out': '/sounds/player-out.mp3',
   'game-win': '/sounds/game-win.mp3',
   'game-lose': '/sounds/game-lose.mp3',
   'button-click': '/sounds/button-click.mp3',
+  'achievement': '/sounds/achievement.mp3',
 };
 
 class SoundService {
@@ -120,6 +124,9 @@ class SoundService {
         break;
       case 10:
         this.play('special-burn');
+        break;
+      case 11: // Jack - reverse
+        this.play('special-reverse');
         break;
       default:
         this.play('card-play');

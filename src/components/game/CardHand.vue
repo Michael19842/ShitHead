@@ -63,18 +63,30 @@ function handleCardClick(card: Card | undefined) {
 <style scoped>
 .card-hand {
   display: flex;
-  justify-content: center;
+  justify-content: safe center;
   flex-wrap: nowrap;
-  padding: 8px;
+  padding: 8px 16px;
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: thin; /* Firefox - show thin scrollbar */
+  scrollbar-color: rgba(255,255,255,0.3) transparent;
   gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .card-hand::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
+  height: 4px;
+}
+
+.card-hand::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card-hand::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
 }
 
 /* Overlap kaarten wanneer er veel zijn */
@@ -88,7 +100,7 @@ function handleCardClick(card: Card | undefined) {
 }
 
 /* Bij weinig kaarten: geen overlap nodig */
-@container (min-width: 400px) {
+@media (min-width: 400px) {
   .card-hand :deep(.playing-card) {
     margin-left: -10px;
   }

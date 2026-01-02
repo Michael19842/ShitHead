@@ -67,11 +67,14 @@ npm run lint
 | **3** | "Glass" card - can be played on anything, next player must beat the card below the 3 |
 | **7** | Can only be played on 7 or lower. Next card must be 7 or lower |
 | **10** | "Burn" - removes the entire discard pile from the game |
+| **Jack** | "Reverse" - reverses the play direction |
 
 ### Burn Mechanic
 The discard pile is burned (removed from game) when:
 - A 10 is played
 - Four cards of the same rank are on top of the pile
+- Four cards of the same rank with 3's in between (e.g., 4-4-3-4-4 or 4-3-4-4-4) also burn
+- Note: This does NOT work with 3's themselves (3-3-3-4-3 does NOT burn)
 
 ### End Game Phases
 1. **Hand phase**: Play from hand, draw to replenish

@@ -51,7 +51,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Card } from '@/types';
-import { RANK_NAMES_EN, RANK_NAMES_NL, SUIT_SYMBOLS, SPECIAL_CARDS } from '@/types';
+import { RANK_NAMES_EN, RANK_NAMES_NL, RANK_NAMES_GZB, SUIT_SYMBOLS, SPECIAL_CARDS } from '@/types';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const settingsStore = useSettingsStore();
@@ -72,7 +72,17 @@ const emit = defineEmits<{
 
 const rankDisplay = computed(() => {
   if (!props.card) return '';
-  const rankNames = settingsStore.cardLanguage === 'nl' ? RANK_NAMES_NL : RANK_NAMES_EN;
+  let rankNames: Record<number, string>;
+  switch (settingsStore.cardNotation) {
+    case 'gzb':
+      rankNames = RANK_NAMES_GZB;
+      break;
+    case 'en':
+      rankNames = RANK_NAMES_EN;
+      break;
+    default:
+      rankNames = RANK_NAMES_NL;
+  }
   return rankNames[props.card.rank] || props.card.rank.toString();
 });
 

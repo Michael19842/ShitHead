@@ -133,7 +133,7 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
   burn_4_of_kind: {
     id: 'burn_4_of_kind',
     emoji: '💥',
-    name: 'Vier Dezansen',
+    name: 'Vier de vieren',
     description: 'Burn met 4 dezelfde kaarten'
   },
   burn_5_in_game: {

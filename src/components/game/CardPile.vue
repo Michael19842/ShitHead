@@ -525,17 +525,20 @@ function handleClick() {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 5;
-  transform: translateY(-8px) scale(0.92);
-  opacity: 0.7;
+  z-index: 8;
 }
 
 .glass-under-card {
-  filter: brightness(0.9) saturate(0.8);
+  filter: brightness(0.95) saturate(0.95);
 }
 
 .top-card-wrapper.glass-top-card {
   position: relative;
+}
+
+/* Make the 3 card semi-transparent so you can see the card underneath */
+.top-card-wrapper.glass-top-card :deep(.card-front) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.7) 0%, rgba(248, 248, 248, 0.65) 100%);
 }
 
 .top-card-wrapper.glass-top-card::before {
@@ -545,9 +548,9 @@ function handleClick() {
   border-radius: 6px;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.15) 0%,
     rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0.1) 100%
+    rgba(255, 255, 255, 0.15) 100%
   );
   pointer-events: none;
   z-index: 100;
@@ -558,10 +561,10 @@ function handleClick() {
   position: absolute;
   inset: 2px;
   border-radius: 5px;
-  border: 1px solid rgba(156, 39, 176, 0.3);
+  border: 1px solid rgba(156, 39, 176, 0.4);
   box-shadow:
-    inset 0 0 10px rgba(156, 39, 176, 0.1),
-    0 0 8px rgba(156, 39, 176, 0.2);
+    inset 0 0 15px rgba(156, 39, 176, 0.15),
+    0 0 10px rgba(156, 39, 176, 0.25);
   pointer-events: none;
   z-index: 101;
   animation: glass-shimmer 2s ease-in-out infinite;

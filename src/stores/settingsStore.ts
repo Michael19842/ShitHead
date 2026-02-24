@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { AIDifficulty } from '@/types'
+import { ref, computed, watch } from 'vue'
+import type { AIDifficulty, AICharacter } from '@/types'
+import { getRandomAICharacters } from '@/types'
 
-export type CardLanguage = 'nl' | 'en'
+export type CardNotation = 'nl' | 'en' | 'gzb'
 export type CardBackStyle = 'classic' | 'modern' | 'royal' | 'minimal'
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -10,11 +11,13 @@ export const useSettingsStore = defineStore('settings', () => {
   const playerCount = ref(2)
   const humanPlayerCount = ref(1)
   const aiDifficulty = ref<AIDifficulty>('medium')
-  const playerNames = ref<string[]>(['Speler 1', 'Computer'])
+  const playerNames = ref<string[]>(['Speler 1'])
+  const aiCharacters = ref<AICharacter[]>([])
   const soundEnabled = ref(true)
   const animationSpeed = ref<'slow' | 'normal' | 'fast'>('normal')
-  const cardLanguage = ref<CardLanguage>('nl') // nl = B,V,H,A | en = J,Q,K,A
+  const cardNotation = ref<CardNotation>('nl') // nl = B,V,H,A | en = J,Q,K,A | gzb = B,Z,G,A
   const cardBackStyle = ref<CardBackStyle>('classic')
+  const leftHandedMode = ref(false)
 
   // Getters
   const aiPlayerCount = computed(() => playerCount.value - humanPlayerCount.value)
@@ -29,33 +32,54 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   // Actions
-  function setPlayerCount(count: number) {
-    playerCount.value = count
+  function updateAICharacters() {
+    const aiCount = Math.max(0, playerCount.value - humanPlayerCount.value)
+    aiCharacters.value = getRandomAICharacters(aiCount, aiDifficulty.value)
+    updatePlayerNamesWithAI()
+  }
 
-    // Build new names array with correct length
+  function updatePlayerNamesWithAI() {
     const newNames: string[] = []
-    for (let i = 0; i < count; i++) {
-      if (i < playerNames.value.length) {
-        newNames.push(playerNames.value[i])
+    let aiIndex = 0
+    for (let i = 0; i < playerCount.value; i++) {
+      if (i < humanPlayerCount.value) {
+        // Human player - keep existing name or use default
+        newNames.push(playerNames.value[i] || `Speler ${i + 1}`)
       } else {
-        // Default name for new players
-        newNames.push(i === 0 ? 'Speler 1' : `Computer ${i}`)
+        // AI player - use character name
+        const character = aiCharacters.value[aiIndex++]
+        newNames.push(character?.name || `Computer ${i}`)
       }
     }
     playerNames.value = newNames
+  }
+
+  function setPlayerCount(count: number) {
+    playerCount.value = count
 
     // Ensure human player count doesn't exceed total
     if (humanPlayerCount.value > count) {
       humanPlayerCount.value = count
     }
+
+    // Update AI characters and names
+    updateAICharacters()
   }
 
   function setHumanPlayerCount(count: number) {
     humanPlayerCount.value = Math.min(count, playerCount.value)
+    // Update AI characters and names
+    updateAICharacters()
+  }
+
+  function shuffleAICharacters() {
+    updateAICharacters()
   }
 
   function setAIDifficulty(difficulty: AIDifficulty) {
     aiDifficulty.value = difficulty
+    // Update AI characters to match new difficulty
+    updateAICharacters()
   }
 
   function setPlayerName(index: number, name: string) {
@@ -72,24 +96,33 @@ export const useSettingsStore = defineStore('settings', () => {
     animationSpeed.value = speed
   }
 
-  function setCardLanguage(language: CardLanguage) {
-    cardLanguage.value = language
-  }
-
   function setCardBackStyle(style: CardBackStyle) {
     cardBackStyle.value = style
+  }
+
+  function setCardNotation(notation: CardNotation) {
+    cardNotation.value = notation
+  }
+
+  function setLeftHandedMode(enabled: boolean) {
+    leftHandedMode.value = enabled
   }
 
   function resetToDefaults() {
     playerCount.value = 2
     humanPlayerCount.value = 1
     aiDifficulty.value = 'medium'
-    playerNames.value = ['Speler 1', 'Computer']
     soundEnabled.value = true
     animationSpeed.value = 'normal'
-    cardLanguage.value = 'nl'
+    cardNotation.value = 'nl'
     cardBackStyle.value = 'classic'
+    leftHandedMode.value = false
+    // Reset AI characters and update names
+    updateAICharacters()
   }
+
+  // Initialize AI characters on store creation
+  updateAICharacters()
 
   return {
     // State
@@ -97,10 +130,12 @@ export const useSettingsStore = defineStore('settings', () => {
     humanPlayerCount,
     aiDifficulty,
     playerNames,
+    aiCharacters,
     soundEnabled,
     animationSpeed,
-    cardLanguage,
+    cardNotation,
     cardBackStyle,
+    leftHandedMode,
     // Getters
     aiPlayerCount,
     animationDuration,
@@ -109,10 +144,12 @@ export const useSettingsStore = defineStore('settings', () => {
     setHumanPlayerCount,
     setAIDifficulty,
     setPlayerName,
+    shuffleAICharacters,
     setSoundEnabled,
     setAnimationSpeed,
-    setCardLanguage,
+    setCardNotation,
     setCardBackStyle,
+    setLeftHandedMode,
     resetToDefaults,
   }
 })

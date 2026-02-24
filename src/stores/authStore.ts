@@ -10,8 +10,8 @@ import {
   onAuthStateChange,
   updateLastSeen,
   signOut as authSignOut
-} from '@/services/firebase/authService';
-import { initializeFirebase } from '@/firebase';
+} from '@/services/supabase/authService';
+import { initializeSupabase, getSupabase } from '@/supabase';
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -27,7 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
   const playerName = computed(() => player.value?.displayName || null);
   const isRegistered = computed(() => player.value !== null && player.value.displayName !== null);
 
-  // Initialize Firebase and check auth state
+  // Initialize Supabase and check auth state
   async function initialize(): Promise<void> {
     if (isInitialized.value) return;
 
@@ -35,8 +35,8 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null;
 
     try {
-      // Initialize Firebase
-      initializeFirebase();
+      // Initialize Supabase
+      initializeSupabase();
 
       // Get device ID
       deviceId.value = await getDeviceId();
@@ -85,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Create player profile
       const newPlayer = await createPlayerProfile(
-        user.uid,
+        user.id,
         deviceId.value,
         displayName
       );
@@ -114,15 +114,15 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null;
 
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const { getFirebaseDb } = await import('@/firebase');
+      const supabase = getSupabase();
 
-      const db = getFirebaseDb();
-      const playerRef = doc(db, 'players', player.value.id);
-
-      await updateDoc(playerRef, {
-        displayName: newName
-      });
+      await supabase
+        .from('players')
+        .update({
+          display_name: newName,
+          display_name_lower: newName.toLowerCase().trim()
+        })
+        .eq('id', player.value.id);
 
       player.value = { ...player.value, displayName: newName };
       return true;
@@ -134,7 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Refresh player data from Firestore
+  // Refresh player data from Supabase
   async function refreshPlayer(): Promise<void> {
     if (!player.value) return;
 

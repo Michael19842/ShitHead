@@ -1,8 +1,12 @@
 <template>
   <div class="player-area" :class="{ 'is-current': isCurrentPlayer, 'is-opponent': isOpponent }">
+    <!-- Turn indicator for opponents - positioned absolutely to prevent layout jump -->
+    <span v-if="isCurrentPlayer && isOpponent" class="turn-indicator opponent-turn">Aan de beurt</span>
+
     <div class="player-name">
+      <span v-if="player.character" class="player-icon">{{ player.character.icon }}</span>
       {{ player.name }}
-      <span v-if="isCurrentPlayer" class="turn-indicator">Aan de beurt</span>
+      <span v-if="isCurrentPlayer && !isOpponent" class="turn-indicator">Aan de beurt</span>
       <span v-if="player.isOut" class="out-indicator">Klaar!</span>
     </div>
 
@@ -143,8 +147,8 @@ function handleCardClick(card: Card | undefined) {
 .player-area.is-opponent {
   background: rgba(0, 0, 0, 0.2);
   padding: 6px;
-  overflow: hidden;
   border-radius: 12px;
+  position: relative;
 }
 
 .player-area.is-opponent.is-current {
@@ -196,6 +200,12 @@ function handleCardClick(card: Card | undefined) {
   gap: 8px;
   color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  position: relative;
+  min-height: 20px;
+}
+
+.player-icon {
+  font-size: 1.2em;
 }
 
 .turn-indicator {
@@ -207,6 +217,23 @@ function handleCardClick(card: Card | undefined) {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
   animation: pulse-soft 2s ease-in-out infinite;
+  position: absolute;
+  left: 100%;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* For opponents, position indicator as overlay on the player area */
+.turn-indicator.opponent-turn {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  left: auto;
+  transform: none;
+  margin-left: 0;
+  font-size: 9px;
+  padding: 2px 6px;
+  z-index: 10;
 }
 
 @keyframes pulse-soft {

@@ -1,4 +1,4 @@
-import type { Card, Player, MoveResult, PlayerPhase } from '@/types';
+import type { Card, Player, MoveResult, PlayerPhase, AICharacter } from '@/types';
 import { SPECIAL_CARDS } from '@/types';
 import { createMultiDeck, shuffleDeck, dealCards, getRequiredDecks } from './deckService';
 
@@ -22,13 +22,14 @@ export interface GameInitResult {
 export function initializeGame(
   playerCount: number,
   playerNames: string[],
-  humanCount: number
+  humanCount: number,
+  aiCharacters: AICharacter[] = []
 ): GameInitResult {
   const deckCount = getRequiredDecks(playerCount);
   let deck = createMultiDeck(deckCount);
   deck = shuffleDeck(deck);
 
-  const { players, remainingDeck } = dealCards(deck, playerCount, playerNames, humanCount);
+  const { players, remainingDeck } = dealCards(deck, playerCount, playerNames, humanCount, aiCharacters);
 
   return {
     players,
@@ -396,6 +397,18 @@ export interface StartingPlayerResult {
 }
 
 /**
+ * Result of determining ALL players who can start (have the lowest card)
+ */
+export interface StartingPlayersResult {
+  /** All player indices who have the starting card */
+  playerIndices: number[];
+  /** Map of player index to their starting cards of that rank */
+  playerCards: Map<number, Card[]>;
+  /** The rank that starts the game */
+  startingRank: number;
+}
+
+/**
  * Determine which player starts and which cards they must play first.
  * The player with the lowest card (starting from 4) starts and must play
  * ALL cards of that rank from their hand.
@@ -437,6 +450,66 @@ export function getStartingPlayerAndCards(players: Player[]): StartingPlayerResu
   return {
     playerIndex: 0,
     startingCards: [],
+    startingRank: 0
+  };
+}
+
+/**
+ * Determine ALL players who can start the game.
+ * All players with the lowest card (starting from 4) can start.
+ * The first one to play begins the game.
+ */
+export function getStartingPlayers(players: Player[]): StartingPlayersResult {
+  // Start checking from rank 4, then 5, 6, etc. up to Ace (14)
+  for (let rank = 4; rank <= 14; rank++) {
+    const playerIndices: number[] = [];
+    const playerCards = new Map<number, Card[]>();
+
+    for (let playerIndex = 0; playerIndex < players.length; playerIndex++) {
+      const player = players[playerIndex];
+      const matchingCards = player.hand.filter(card => card.rank === rank);
+      if (matchingCards.length > 0) {
+        playerIndices.push(playerIndex);
+        playerCards.set(playerIndex, matchingCards);
+      }
+    }
+
+    if (playerIndices.length > 0) {
+      return {
+        playerIndices,
+        playerCards,
+        startingRank: rank
+      };
+    }
+  }
+
+  // If no one has 4-14, check for 3s and 2s (unlikely but possible)
+  for (let rank = 3; rank >= 2; rank--) {
+    const playerIndices: number[] = [];
+    const playerCards = new Map<number, Card[]>();
+
+    for (let playerIndex = 0; playerIndex < players.length; playerIndex++) {
+      const player = players[playerIndex];
+      const matchingCards = player.hand.filter(card => card.rank === rank);
+      if (matchingCards.length > 0) {
+        playerIndices.push(playerIndex);
+        playerCards.set(playerIndex, matchingCards);
+      }
+    }
+
+    if (playerIndices.length > 0) {
+      return {
+        playerIndices,
+        playerCards,
+        startingRank: rank
+      };
+    }
+  }
+
+  // Fallback: first player starts
+  return {
+    playerIndices: [0],
+    playerCards: new Map(),
     startingRank: 0
   };
 }

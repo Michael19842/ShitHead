@@ -203,7 +203,7 @@
           <div class="action-area-wrapper">
             <!-- Action buttons -->
             <Transition name="buttons">
-              <div class="action-buttons" v-if="isBottomPlayerTurn && !aiThinking && !showPassPhone">
+              <div class="action-buttons" :class="{ 'left-handed': settingsStore.leftHandedMode }" v-if="isBottomPlayerTurn && !aiThinking && !showPassPhone">
                 <ion-button
                   :disabled="!canPlaySelected"
                   @click="playSelectedCards"
@@ -319,9 +319,9 @@ import {
   getPlayerPhase as getPhase,
   isGameOver,
   getNextPlayerIndex,
-  getStartingPlayerAndCards
+  getStartingPlayers
 } from '@/services/gameEngine';
-import { RANK_NAMES_EN, RANK_NAMES_NL, SPECIAL_CARDS } from '@/types';
+import { RANK_NAMES_EN, RANK_NAMES_NL, RANK_NAMES_GZB, SPECIAL_CARDS } from '@/types';
 import { calculateMove, getAIThinkingDelay } from '@/services/aiPlayer';
 import { soundService } from '@/services/soundService';
 import { useAchievementStore } from '@/stores/achievementStore';
@@ -344,6 +344,10 @@ const showDevilEffect = ref(false); // Easter egg voor 666
 const showPassPhone = ref(false); // Voor "geef telefoon door" scherm
 const lastPlayedByHuman = ref(false); // Track if last card was played by human (for animation direction)
 const swappingPlayerIndex = ref(0); // Welke menselijke speler aan het swappen is
+const isFirstMove = ref(true); // Track of dit de eerste zet van het spel is
+const startingPlayerIndices = ref<number[]>([]); // Alle spelers die kunnen starten
+const startingCardsMap = ref<Map<number, Card[]>>(new Map()); // Kaarten per speler die gespeeld moeten worden
+const startingRank = ref(0); // De rank waarmee gestart wordt
 
 // Achievement tracking
 const gameStartTime = ref<number>(0);
@@ -395,19 +399,50 @@ const isHumanTurn = computed(() => {
 
 // Is het de beurt van de speler die onderin staat?
 const isBottomPlayerTurn = computed(() => {
-  if (!bottomPlayer.value || !gameStore.currentPlayer) return false;
+  if (!bottomPlayer.value) return false;
+
+  // Bij eerste zet: check of bottom player een van de starters is
+  if (isFirstMove.value && startingPlayerIndices.value.length > 0) {
+    const bottomPlayerIndex = gameStore.players.findIndex(p => p.id === bottomPlayer.value?.id);
+    return startingPlayerIndices.value.includes(bottomPlayerIndex);
+  }
+
+  if (!gameStore.currentPlayer) return false;
   return gameStore.currentPlayer.id === bottomPlayer.value.id;
+});
+
+// Geforceerde kaarten voor de huidige bottom player (bij eerste zet)
+const forcedStartingCards = computed(() => {
+  if (!isFirstMove.value || !bottomPlayer.value) return [];
+  const bottomPlayerIndex = gameStore.players.findIndex(p => p.id === bottomPlayer.value?.id);
+  return startingCardsMap.value.get(bottomPlayerIndex) || [];
 });
 
 const isSevenActive = computed(() => gameStore.isSevenActive);
 
 const canPlaySelected = computed(() => {
   if (!isBottomPlayerTurn.value || gameStore.selectedCards.length === 0) return false;
+
+  // Bij eerste zet: alleen de geforceerde startkaarten mogen gespeeld worden
+  const forced = forcedStartingCards.value;
+  if (isFirstMove.value && forced.length > 0) {
+    const selectedIds = new Set(gameStore.selectedCards.map(c => c.id));
+    const forcedIds = new Set(forced.map(c => c.id));
+
+    // Alle geforceerde kaarten moeten geselecteerd zijn
+    if (selectedIds.size !== forcedIds.size) return false;
+    for (const id of forcedIds) {
+      if (!selectedIds.has(id)) return false;
+    }
+  }
+
   return canPlayCards(gameStore.selectedCards, gameStore.discardPile);
 });
 
 const canPickup = computed(() => {
   if (!isBottomPlayerTurn.value) return false;
+  // Bij eerste zet kan de speler niet de stapel pakken - moet de geforceerde kaarten spelen
+  if (isFirstMove.value && startingPlayerIndices.value.length > 0) return false;
   return gameStore.discardPile.length > 0;
 });
 
@@ -448,6 +483,28 @@ function getPlayerPhase(player: Player): PlayerPhase {
 
 function selectCard(card: Card) {
   if (!isBottomPlayerTurn.value) return;
+
+  // Bij eerste zet: alleen geforceerde kaarten kunnen geselecteerd worden
+  const forced = forcedStartingCards.value;
+  if (isFirstMove.value && forced.length > 0) {
+    const forcedIds = new Set(forced.map(c => c.id));
+
+    // Als de kaart een van de geforceerde kaarten is, selecteer/deselecteer ALLE geforceerde kaarten
+    if (forcedIds.has(card.id)) {
+      // Toggle: als al geselecteerd, deselecteer alles; anders selecteer alles
+      if (gameStore.selectedCards.length > 0) {
+        gameStore.clearSelection();
+      } else {
+        gameStore.clearSelection();
+        for (const forcedCard of forced) {
+          gameStore.selectCard(forcedCard);
+        }
+      }
+    }
+    // Andere kaarten kunnen niet geselecteerd worden bij de eerste zet
+    return;
+  }
+
   gameStore.selectCard(card);
 }
 
@@ -482,27 +539,55 @@ function confirmPassPhone() {
 }
 
 function startGame() {
-  // Determine who starts based on lowest card (first 4, then 5, etc.)
-  const startingInfo = getStartingPlayerAndCards(gameStore.players);
-  gameStore.setCurrentPlayer(startingInfo.playerIndex);
+  // Determine ALL players who can start based on lowest card
+  const startingInfo = getStartingPlayers(gameStore.players);
+
+  // Sla de startinformatie op
+  isFirstMove.value = true;
+  startingPlayerIndices.value = [...startingInfo.playerIndices];
+  startingCardsMap.value = new Map(startingInfo.playerCards);
+  startingRank.value = startingInfo.startingRank;
 
   gameStore.startPlaying();
 
-  const startingPlayer = gameStore.players[startingInfo.playerIndex];
-  const rankNames = settingsStore.cardLanguage === 'nl' ? RANK_NAMES_NL : RANK_NAMES_EN;
+  const rankNames = settingsStore.cardNotation === 'gzb' ? RANK_NAMES_GZB :
+                    settingsStore.cardNotation === 'en' ? RANK_NAMES_EN : RANK_NAMES_NL;
   const rankName = rankNames[startingInfo.startingRank] || startingInfo.startingRank.toString();
-  const cardCount = startingInfo.startingCards.length;
 
-  // Show message about who starts and with which card(s) they should play
-  if (cardCount > 1) {
-    showMessage(`${startingPlayer.name} begint met ${cardCount}x ${rankName}!`, 'info', '🎮');
+  // Bepaal wie er kunnen starten
+  const starterNames = startingInfo.playerIndices.map(i => gameStore.players[i].name);
+
+  // Show message about who can start
+  if (starterNames.length > 1) {
+    showMessage(`Wie speelt eerst de ${rankName}?`, 'info', '🎮');
   } else {
-    showMessage(`${startingPlayer.name} begint met ${rankName}!`, 'info', '🎮');
+    const cardCount = startingInfo.playerCards.get(startingInfo.playerIndices[0])?.length || 1;
+    if (cardCount > 1) {
+      showMessage(`${starterNames[0]} MOET ${cardCount}x ${rankName} spelen!`, 'info', '🎮');
+    } else {
+      showMessage(`${starterNames[0]} MOET ${rankName} spelen!`, 'info', '🎮');
+    }
   }
 
-  // If starting player is AI, let them play
-  if (startingPlayer.isAI) {
+  // Check of er AI spelers zijn die kunnen starten
+  const aiStarters = startingInfo.playerIndices.filter(i => gameStore.players[i].isAI);
+  const humanStarters = startingInfo.playerIndices.filter(i => !gameStore.players[i].isAI);
+
+  if (humanStarters.length === 0 && aiStarters.length > 0) {
+    // Alleen AI kan starten - laat de eerste AI spelen
+    gameStore.setCurrentPlayer(aiStarters[0]);
     scheduleAITurn();
+  } else if (humanStarters.length > 0) {
+    // Er is minstens één menselijke speler die kan starten
+    // Selecteer automatisch de kaarten voor de bottom player als die kan starten
+    const bottomPlayerIndex = gameStore.players.findIndex(p => p.id === bottomPlayer.value?.id);
+    if (startingInfo.playerIndices.includes(bottomPlayerIndex)) {
+      const cards = startingInfo.playerCards.get(bottomPlayerIndex) || [];
+      gameStore.clearSelection();
+      for (const card of cards) {
+        gameStore.selectCard(card);
+      }
+    }
   }
 }
 
@@ -537,6 +622,17 @@ async function playSelectedCards() {
   );
 
   gameStore.clearSelection();
+
+  // Reset starting state na eerste zet en bepaal volgende speler
+  if (isFirstMove.value) {
+    isFirstMove.value = false;
+    // Bepaal de speler die gespeeld heeft als de huidige speler
+    const playerIndex = gameStore.players.findIndex(p => p.id === player.id);
+    gameStore.setCurrentPlayer(playerIndex);
+    startingPlayerIndices.value = [];
+    startingCardsMap.value = new Map();
+    startingRank.value = 0;
+  }
 
   if (!result.success) {
     showMessage(result.message || 'Ongeldige zet', 'error', '❌');
@@ -724,7 +820,9 @@ function nextTurn() {
 
 function scheduleAITurn() {
   aiThinking.value = true;
-  const delay = getAIThinkingDelay(settingsStore.aiDifficulty);
+  const player = gameStore.currentPlayer;
+  const difficulty = player?.character?.difficulty ?? settingsStore.aiDifficulty;
+  const delay = getAIThinkingDelay(difficulty);
 
   setTimeout(() => {
     executeAITurn();
@@ -738,12 +836,29 @@ async function executeAITurn() {
     return;
   }
 
-  const move = calculateMove(
-    player,
-    gameStore.discardPile,
-    gameStore.deck.length === 0,
-    settingsStore.aiDifficulty
-  );
+  // Bij eerste zet: AI moet de geforceerde kaarten spelen
+  let move;
+  const playerIndex = gameStore.players.findIndex(p => p.id === player.id);
+  const aiStartingCards = startingCardsMap.value.get(playerIndex);
+
+  if (isFirstMove.value && aiStartingCards && aiStartingCards.length > 0) {
+    move = {
+      type: 'play' as const,
+      cards: [...aiStartingCards]
+    };
+    // Reset starting state
+    isFirstMove.value = false;
+    startingPlayerIndices.value = [];
+    startingCardsMap.value = new Map();
+    startingRank.value = 0;
+  } else {
+    move = calculateMove(
+      player,
+      gameStore.discardPile,
+      gameStore.deck.length === 0,
+      player.character?.difficulty ?? settingsStore.aiDifficulty
+    );
+  }
 
   aiThinking.value = false;
 
@@ -941,6 +1056,10 @@ onIonViewWillEnter(() => {
   swapFaceUpCard.value = null;
   showPassPhone.value = false;
   showBurnAnimation.value = false;
+  isFirstMove.value = true;
+  startingPlayerIndices.value = [];
+  startingCardsMap.value = new Map();
+  startingRank.value = 0;
 
   // Reset achievement tracking
   gameStartTime.value = Date.now();
@@ -961,7 +1080,8 @@ onIonViewWillEnter(() => {
   const result = initializeGame(
     playerCount,
     playerNames,
-    humanPlayerCount
+    humanPlayerCount,
+    settingsStore.aiCharacters
   );
   gameStore.initGame(result.players, result.deck, result.deckCount);
 
@@ -1641,6 +1761,10 @@ onIonViewWillEnter(() => {
   justify-content: center;
   padding: 12px;
   flex-shrink: 0;
+}
+
+.action-buttons.left-handed {
+  flex-direction: row-reverse;
 }
 
 .action-buttons ion-button {

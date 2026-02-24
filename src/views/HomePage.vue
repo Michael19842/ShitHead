@@ -54,6 +54,7 @@
 
         <div class="footer-text">
           <p>Wees niet de laatste met kaarten!</p>
+          <p class="trademark">MvR open project 2026</p>
         </div>
       </div>
     </ion-content>
@@ -321,6 +322,13 @@ onMounted(async () => {
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.9rem;
   margin: 0;
+}
+
+.footer-text .trademark {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 8px;
+  letter-spacing: 0.05em;
 }
 
 /* Trophy button */

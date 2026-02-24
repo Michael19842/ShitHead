@@ -14,6 +14,7 @@ export interface Player {
   faceDown: Card[];
   isAI: boolean;
   isOut: boolean; // Player has finished (no cards left)
+  character?: AICharacter; // AI character with name, icon, difficulty
 }
 
 export enum GamePhase {
@@ -57,6 +58,42 @@ export interface MoveResult {
 }
 
 export type AIDifficulty = 'easy' | 'medium' | 'hard';
+
+// AI Character definition
+export interface AICharacter {
+  id: string;
+  name: string;
+  icon: string;
+  difficulty: AIDifficulty;
+}
+
+// 10 AI Characters: 3 easy, 4 medium, 3 hard (IT/Programming themed)
+export const AI_CHARACTERS: AICharacter[] = [
+  // Easy (3) - Older/simpler tech
+  { id: 'basic', name: 'BASIC Betty', icon: '📟', difficulty: 'easy' },
+  { id: 'dos', name: 'DOS Danny', icon: '💾', difficulty: 'easy' },
+  { id: 'pascal', name: 'Pascal Pete', icon: '🖥️', difficulty: 'easy' },
+
+  // Medium (4) - Modern languages
+  { id: 'python', name: 'Python Pam', icon: '🐍', difficulty: 'medium' },
+  { id: 'java', name: 'Java Jake', icon: '☕', difficulty: 'medium' },
+  { id: 'ruby', name: 'Ruby Rose', icon: '💎', difficulty: 'medium' },
+  { id: 'swift', name: 'Swift Sam', icon: '🦅', difficulty: 'medium' },
+
+  // Hard (3) - Low-level/complex
+  { id: 'rust', name: 'Rust Rex', icon: '🦀', difficulty: 'hard' },
+  { id: 'cpp', name: 'C++ Clara', icon: '⚡', difficulty: 'hard' },
+  { id: 'assembly', name: 'Assembly Ada', icon: '🔧', difficulty: 'hard' },
+];
+
+// Helper function to get random AI characters, optionally filtered by difficulty
+export function getRandomAICharacters(count: number, difficulty?: AIDifficulty): AICharacter[] {
+  const filtered = difficulty
+    ? AI_CHARACTERS.filter(c => c.difficulty === difficulty)
+    : AI_CHARACTERS;
+  const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
 
 export interface GameSettings {
   playerCount: number;
@@ -107,6 +144,23 @@ export const RANK_NAMES_NL: Record<number, string> = {
   11: 'B',  // Boer
   12: 'V',  // Vrouw
   13: 'H',  // Heer
+  14: 'A',  // Aas
+};
+
+// Card rank display names (Goud-Zilver-Brons / Olympic medal notation)
+export const RANK_NAMES_GZB: Record<number, string> = {
+  2: '2',
+  3: '3',
+  4: '4',
+  5: '5',
+  6: '6',
+  7: '7',
+  8: '8',
+  9: '9',
+  10: '10',
+  11: 'B',  // Brons
+  12: 'Z',  // Zilver
+  13: 'G',  // Goud
   14: 'A',  // Aas
 };
 

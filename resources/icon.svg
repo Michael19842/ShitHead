@@ -1,40 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Background circle (optional, for round icons) -->
-  <circle cx="256" cy="256" r="256" fill="#4CAF50"/>
+  <!-- Background -->
+  <rect width="512" height="512" fill="#3d3d3d"/>
 
-  <!-- Poop shape - main body -->
-  <ellipse cx="256" cy="380" rx="140" ry="80" fill="#8B5A2B"/>
-  <ellipse cx="256" cy="380" rx="140" ry="80" fill="#7B4A1B"/>
-
-  <!-- Poop middle section -->
-  <ellipse cx="256" cy="310" rx="115" ry="65" fill="#8B5A2B"/>
-  <path d="M141 310 Q141 250 180 250 Q200 280 256 280 Q312 280 332 250 Q371 250 371 310" fill="#8B5A2B"/>
-
-  <!-- Poop top swirl -->
-  <path d="M180 250 Q180 200 220 190 Q240 220 280 200 Q320 180 300 140 Q340 120 320 80 Q280 60 260 100 Q240 80 200 110 Q160 140 180 190 Q160 220 180 250" fill="#8B5A2B"/>
-
-  <!-- Poop tip -->
-  <ellipse cx="270" cy="85" rx="35" ry="30" fill="#8B5A2B"/>
-
-  <!-- Shading/highlights -->
-  <ellipse cx="230" cy="370" rx="100" ry="50" fill="#6B3A0B" opacity="0.3"/>
-  <ellipse cx="280" cy="300" rx="60" ry="30" fill="#9B6A3B" opacity="0.4"/>
-  <ellipse cx="260" cy="200" rx="30" ry="20" fill="#9B6A3B" opacity="0.4"/>
-
-  <!-- Left eye -->
-  <ellipse cx="210" cy="320" rx="28" ry="32" fill="white"/>
-  <ellipse cx="215" cy="325" rx="14" ry="16" fill="#2C1810"/>
-  <ellipse cx="220" cy="320" rx="6" ry="7" fill="white"/>
-
-  <!-- Right eye -->
-  <ellipse cx="302" cy="320" rx="28" ry="32" fill="white"/>
-  <ellipse cx="307" cy="325" rx="14" ry="16" fill="#2C1810"/>
-  <ellipse cx="312" cy="320" rx="6" ry="7" fill="white"/>
-
-  <!-- Smile -->
-  <path d="M205 375 Q256 420 307 375" stroke="#2C1810" stroke-width="8" fill="none" stroke-linecap="round"/>
-
-  <!-- Cheek blush -->
-  <ellipse cx="175" cy="355" rx="18" ry="12" fill="#D4A574" opacity="0.6"/>
-  <ellipse cx="337" cy="355" rx="18" ry="12" fill="#D4A574" opacity="0.6"/>
+  <!-- Twemoji Poop Emoji (scaled and centered) -->
+  <g transform="translate(106, 106) scale(8.33)">
+    <path fill="#BF6952" d="M33.541 23.198c.364-1.578.243-3.266-.458-4.946-.678-1.625-1.847-2.91-3.271-3.773.318-1.192.234-2.475-.324-3.75-.841-1.92-2.66-3.201-4.712-3.562.249-.572.329-1.289.036-2.167-1-3-5-1-8-4.999-2.44 1.464-2.97 3.64-2.878 5.487-2.421.412-3.8.936-3.8.936v.002c-1.36.55-2.322 1.883-2.322 3.442 0 .879.318 1.676.828 2.312l-.692.258.001.003c-2.33.871-3.975 2.976-3.975 5.439 0 1.047.3 2.027.82 2.878C1.971 22.027 0 24.781 0 28c0 4.418 3.691 8 8.244 8 3.269 0 6.559-.703 9.531-1.665C20.018 35.375 23.47 36 28.667 36 32.717 36 36 32.717 36 28.667c0-2.176-.953-4.125-2.459-5.469z"/>
+    <ellipse fill="#F5F8FA" cx="13.5" cy="15.5" rx="3.5" ry="4.5"/>
+    <ellipse fill="#F5F8FA" cx="23.5" cy="15.5" rx="3.5" ry="4.5"/>
+    <ellipse fill="#292F33" cx="14" cy="15.5" rx="2" ry="2.5"/>
+    <ellipse fill="#292F33" cx="23" cy="15.5" rx="2" ry="2.5"/>
+    <path fill="#292F33" d="M9.447 24.895C9.201 24.402 9.45 24 10 24h18c.55 0 .799.402.553.895C28.553 24.895 26 30 19 30s-9.553-5.105-9.553-5.105z"/>
+    <path fill="#F2ABBA" d="M19 26c-2.771 0-5.157.922-6.292 2.256C14.2 29.211 16.253 30 19 30s4.801-.789 6.292-1.744C24.157 26.922 21.771 26 19 26z"/>
+  </g>
 </svg>

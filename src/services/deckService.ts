@@ -1,4 +1,4 @@
-import type { Card, Suit, Player } from '@/types';
+import type { Card, Suit, Player, AICharacter } from '@/types';
 
 const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
 const RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]; // 11=J, 12=Q, 13=K, 14=A
@@ -56,26 +56,33 @@ export function shuffleDeck(deck: Card[]): Card[] {
  * @param playerCount Number of players
  * @param playerNames Names of players
  * @param humanCount Number of human players (rest are AI)
+ * @param aiCharacters AI characters to assign to AI players
  */
 export function dealCards(
   deck: Card[],
   playerCount: number,
   playerNames: string[],
-  humanCount: number
+  humanCount: number,
+  aiCharacters: AICharacter[] = []
 ): { players: Player[]; remainingDeck: Card[] } {
   const players: Player[] = [];
-  const cardsPerPlayer = 12; // 4 + 4 + 4
+  let aiIndex = 0;
 
   // Create players
   for (let i = 0; i < playerCount; i++) {
+    const isAI = i >= humanCount;
+    const character = isAI && aiIndex < aiCharacters.length ? aiCharacters[aiIndex++] : undefined;
+    const playerName = isAI && character ? character.name : (playerNames[i] || `Speler ${i + 1}`);
+
     players.push({
       id: `player-${i}`,
-      name: playerNames[i] || `Speler ${i + 1}`,
+      name: playerName,
       hand: [],
       faceUp: [],
       faceDown: [],
-      isAI: i >= humanCount,
-      isOut: false
+      isAI,
+      isOut: false,
+      character
     });
   }
 

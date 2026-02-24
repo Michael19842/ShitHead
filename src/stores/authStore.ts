@@ -41,15 +41,23 @@ export const useAuthStore = defineStore('auth', () => {
       // Get device ID
       deviceId.value = await getDeviceId();
 
-      // Check for existing player with this device
-      const existingPlayer = await findPlayerByDeviceId(deviceId.value);
+      // First, sign in anonymously to get/create a Supabase user
+      const authUser = await signInAnonymouslyWithDevice();
+
+      // Now check if this Supabase user has a player profile
+      const existingPlayer = await getPlayerProfile(authUser.id);
 
       if (existingPlayer) {
-        // Sign in and restore session
-        await signInAnonymouslyWithDevice();
-        player.value = existingPlayer;
-        isAuthenticated.value = true;
-        await updateLastSeen(existingPlayer.id);
+        // Verify the device ID matches
+        if (existingPlayer.deviceId === deviceId.value) {
+          player.value = existingPlayer;
+          isAuthenticated.value = true;
+          await updateLastSeen(existingPlayer.id);
+        } else {
+          // Device ID mismatch - this shouldn't happen normally
+          // The player profile exists but on a different device
+          console.warn('Device ID mismatch, treating as new user');
+        }
       }
 
       // Set up auth state listener

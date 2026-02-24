@@ -325,10 +325,19 @@ export function subscribeLobby(
 ): () => void {
   const supabase = getSupabase();
 
-  // First fetch the current state
-  getLobby(lobbyId).then(callback);
+  // Track the most recent updatedAt we've delivered to prevent a stale initial
+  // fetch from overwriting a realtime event that already arrived.
+  let latestDeliveredAt: Date | null = null;
 
-  // Subscribe to changes
+  const safeCallback = (lobby: Lobby | null) => {
+    if (lobby && latestDeliveredAt && lobby.updatedAt < latestDeliveredAt) {
+      return; // stale data – a newer realtime event already arrived
+    }
+    if (lobby) latestDeliveredAt = lobby.updatedAt;
+    callback(lobby);
+  };
+
+  // Subscribe to changes first so no events are missed during the initial fetch.
   const channel: RealtimeChannel = supabase
     .channel(`lobby:${lobbyId}`)
     .on(
@@ -343,11 +352,14 @@ export function subscribeLobby(
         if (payload.eventType === 'DELETE') {
           callback(null);
         } else if (payload.new) {
-          callback(docToLobby(payload.new as Record<string, unknown>));
+          safeCallback(docToLobby(payload.new as Record<string, unknown>));
         }
       }
     )
     .subscribe();
+
+  // Fetch the current state after subscribing so we don't miss events.
+  getLobby(lobbyId).then(safeCallback);
 
   return () => {
     supabase.removeChannel(channel);

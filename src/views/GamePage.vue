@@ -1588,8 +1588,8 @@ onIonViewWillEnter(() => {
 .opponent-wrapper {
   flex: 0 0 auto;
   width: calc((100% - 12px) / 3); /* 3 opponents max, with gaps */
-  min-width: 90px;
-  max-width: 140px;
+  min-width: 100px;
+  max-width: 130px;
 }
 
 .opponent-enter-active,

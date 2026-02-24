@@ -80,8 +80,11 @@ CREATE POLICY "Authenticated users can create lobbies" ON lobbies
 DROP POLICY IF EXISTS "Lobby members can update lobby" ON lobbies;
 CREATE POLICY "Lobby members can update lobby" ON lobbies
   FOR UPDATE USING (
+    -- Allow if already a member or host
     players ? auth.uid()::text
     OR host_player_id = auth.uid()
+    -- Allow anyone to update a waiting lobby (for joining)
+    OR status = 'waiting'
   );
 
 DROP POLICY IF EXISTS "Host can delete lobby" ON lobbies;

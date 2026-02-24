@@ -162,19 +162,32 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   function subscribeToLobby(lobbyIdVal: string): void {
     if (unsubscribe) unsubscribe();
+    let wasInLobby = false; // Track if we were ever in the lobby
+
     unsubscribe = subscribeLobby(lobbyIdVal, (lobby) => {
       if (!lobby) {
         currentLobby.value = null;
         error.value = 'Lobby is gesloten';
         return;
       }
-      currentLobby.value = lobby;
+
       const authStore = useAuthStore();
-      if (authStore.playerId && !lobby.players[authStore.playerId]) {
+      const isInLobby = authStore.playerId ? !!lobby.players[authStore.playerId] : false;
+
+      // Only show "removed" error if we WERE in the lobby before
+      if (wasInLobby && !isInLobby) {
         currentLobby.value = null;
         error.value = 'Je bent uit de lobby verwijderd';
         if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+        return;
       }
+
+      // Update tracking
+      if (isInLobby) {
+        wasInLobby = true;
+      }
+
+      currentLobby.value = lobby;
     });
   }
 

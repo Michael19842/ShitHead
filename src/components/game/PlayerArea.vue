@@ -149,6 +149,7 @@ function handleCardClick(card: Card | undefined) {
   padding: 6px;
   border-radius: 12px;
   position: relative;
+  overflow: hidden;
 }
 
 .player-area.is-opponent.is-current {
@@ -162,17 +163,20 @@ function handleCardClick(card: Card | undefined) {
 }
 
 .player-area.is-opponent .table-cards {
-  gap: 2px;
+  gap: 1px;
   margin-bottom: 4px;
+  justify-content: center;
+  flex-wrap: nowrap;
 }
 
 .player-area.is-opponent .card-slot {
-  width: 30px;
-  height: 42px;
+  width: 26px;
+  height: 38px;
+  flex-shrink: 0;
 }
 
 .player-area.is-opponent .card-slot :deep(.playing-card) {
-  transform: scale(0.5);
+  transform: scale(0.45);
   transform-origin: top left;
 }
 
@@ -181,15 +185,28 @@ function handleCardClick(card: Card | undefined) {
   left: 2px;
 }
 
+.player-area.is-opponent .opponent-hand {
+  max-width: 100%;
+  justify-content: center;
+  padding: 0 4px;
+}
+
 .player-area.is-opponent .opponent-hand :deep(.playing-card) {
-  width: 24px;
-  height: 34px;
+  width: 20px;
+  height: 28px;
 }
 
 .player-area.is-opponent .opponent-card {
-  width: 24px !important;
-  height: 34px !important;
-  margin-left: -12px;
+  width: 20px !important;
+  height: 28px !important;
+  margin-left: -10px;
+  flex-shrink: 0;
+}
+
+.player-area.is-opponent .hand-count {
+  right: 2px;
+  font-size: 9px;
+  padding: 2px 5px;
 }
 
 .player-name {
@@ -277,11 +294,16 @@ function handleCardClick(card: Card | undefined) {
 }
 
 .empty-slot {
-  width: 60px;
-  height: 84px;
+  width: 100%;
+  height: 100%;
   border: 2px dashed rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.1);
+}
+
+.player-area.is-opponent .empty-slot {
+  border-width: 1px;
+  border-radius: 4px;
 }
 
 .hand-section {

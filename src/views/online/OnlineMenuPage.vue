@@ -171,7 +171,7 @@ import { search, addCircle, enter, timeOutline, pencil } from 'ionicons/icons';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
-import { getBanRemainingSeconds } from '@/services/firebase/playerService';
+import { getBanRemainingSeconds } from '@/services/supabase/playerService';
 
 const router = useRouter();
 const authStore = useAuthStore();

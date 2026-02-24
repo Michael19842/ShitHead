@@ -328,7 +328,7 @@ export function executePickup(player: Player, discardPile: Card[]): Card[] {
  */
 export function getNextPlayerIndex(
   currentIndex: number,
-  players: Player[],
+  players: Pick<Player, 'isOut'>[],
   skipCount = 1,
   direction: 1 | -1 = 1
 ): number {

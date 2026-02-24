@@ -88,7 +88,7 @@ import { personAdd, checkmarkCircle, informationCircle, alertCircle } from 'ioni
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
-import { validateDisplayName, isNameTaken } from '@/services/firebase/playerService';
+import { validateDisplayName, isNameTaken } from '@/services/supabase/playerService';
 
 const router = useRouter();
 const authStore = useAuthStore();

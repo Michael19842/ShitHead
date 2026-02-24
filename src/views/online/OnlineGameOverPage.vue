@@ -99,7 +99,7 @@ import { refreshOutline, homeOutline } from 'ionicons/icons';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
-import { getGame } from '@/services/firebase/gameService';
+import { getGame } from '@/services/supabase/gameService';
 import type { OnlineGame, OnlineGamePlayer } from '@/types';
 
 const router = useRouter();

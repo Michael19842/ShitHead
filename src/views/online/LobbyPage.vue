@@ -131,7 +131,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useLobbyStore } from '@/stores/lobbyStore';
 import { useAuthStore } from '@/stores/authStore';
 import PlayerList from '@/components/online/PlayerList.vue';
-import { createGameFromLobby } from '@/services/firebase/gameService';
+import { createGameFromLobby } from '@/services/supabase/gameService';
 
 const router = useRouter();
 const route = useRoute();

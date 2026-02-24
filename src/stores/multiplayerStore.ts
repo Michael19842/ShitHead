@@ -15,7 +15,7 @@ import {
   handleTurnTimeout,
   createBan,
   removeDisconnectedPlayers
-} from '@/services/firebase/gameService';
+} from '@/services/supabase/gameService';
 import { canPlayCards, getPlayerPhase } from '@/services/gameEngine';
 import { useAuthStore } from './authStore';
 
@@ -362,7 +362,7 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
 
       if (result.banned) {
         // Create the ban
-        await createBan(myPlayerId.value, 5);
+        await createBan(myPlayerId.value, gameId.value!, 5);
         error.value = 'Je bent 5 minuten geblokkeerd wegens inactiviteit';
       }
 

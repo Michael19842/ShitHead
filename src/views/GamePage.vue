@@ -797,13 +797,25 @@ function checkPlayerStatus(player: Player) {
 }
 
 function nextTurn() {
+  // Check of het spel voorbij is voordat we doorgaan
+  if (isGameOver(gameStore.players)) {
+    endGame();
+    return;
+  }
+
   const nextIndex = getNextPlayerIndex(gameStore.currentPlayerIndex, gameStore.players);
   gameStore.setCurrentPlayer(nextIndex);
 
   gameStore.clearSelection();
 
   const nextPlayer = gameStore.currentPlayer;
-  if (!nextPlayer || nextPlayer.isOut) return;
+  if (!nextPlayer || nextPlayer.isOut) {
+    // Als de volgende speler out is, controleer opnieuw of het spel voorbij is
+    if (isGameOver(gameStore.players)) {
+      endGame();
+    }
+    return;
+  }
 
   if (nextPlayer.isAI) {
     scheduleAITurn();
